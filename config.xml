@@ -5,7 +5,7 @@
     <feature name="http://tizen.org/feature/screen.size.all"/>
     <feature name="http://tizen.org/feature/network.internet"/>
     <icon src="icon.png"/>
-    <name>MPKAIptv</name>
+    <name>MPKA Player</name>
     <description>MPKA Iptv - Smart Player completo (Ao Vivo, Filmes, Séries, EPG XMLTV, Zapping, Multi-Qualidade e Controle Parental) para Samsung Tizen OS.</description>
     <tizen:privilege name="http://tizen.org/privilege/internet"/>
     <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
