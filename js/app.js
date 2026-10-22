@@ -116,7 +116,7 @@
         subtitleTrackIdx: -1, // -1 = Desativado, >= 0 = Índice da trilha de legenda
 
         // Auto-Atualização GitHub OTA
-        githubRepo: '',
+        githubRepo: 'mp-lavi/mpka-iptv',
         otaAutoEnabled: true
     };
 
@@ -345,11 +345,11 @@
         }
 
         try {
-            state.githubRepo = localStorage.getItem(STORAGE_KEYS.GITHUB_REPO) || '';
+            state.githubRepo = localStorage.getItem(STORAGE_KEYS.GITHUB_REPO) || 'mp-lavi/mpka-iptv';
             const autoOta = localStorage.getItem(STORAGE_KEYS.OTA_AUTO);
             state.otaAutoEnabled = autoOta !== '0';
         } catch (_) {
-            state.githubRepo = '';
+            state.githubRepo = 'mp-lavi/mpka-iptv';
             state.otaAutoEnabled = true;
         }
     }
