@@ -1546,10 +1546,19 @@
 
         dom.playerTypeText.textContent =
             channel.section === 'movies' ? 'FILME VOD' : (channel.section === 'series' ? 'SÉRIE VOD' : 'AO VIVO');
-        dom.playerChannelGroup.textContent = channel.group || 'TRANSMISSÃO';
-        dom.playerChannelName.textContent = channel.name;
+
+        if (channel.section === 'series' && channel.season && channel.episode) {
+            dom.playerChannelName.textContent = channel.seriesTitle || channel.name;
+            dom.playerChannelGroup.textContent = `T${channel.season}:E${channel.episode} "${channel.group || 'Episódio'}"`;
+        } else {
+            dom.playerChannelName.textContent = channel.name;
+            dom.playerChannelGroup.textContent = channel.group || ' Catálogo';
+        }
+
         dom.playerBufferStatus.textContent = 'Conectando ao servidor de mídia...';
         dom.playerResolutionInfo.textContent = chosenVariant.label || 'AUTO HD';
+
+        hideScrubbingPreviewStrip();
 
         // Configura visibilidade dos controles conforme tipo (VOD vs Ao Vivo)
         dom.playerTimelineRow.classList.toggle('hidden', !isVod);
@@ -1558,10 +1567,10 @@
         const nextEp = getNextEpisodeForCurrentChannel();
         dom.pbtnNextEp.classList.toggle('hidden', !nextEp);
 
-        dom.pbtnDrawerLabel.textContent = isVod ? 'Outros Títulos' : 'Lista de Canais';
+        dom.pbtnDrawerLabel.textContent = 'Outros...';
         dom.pbtnQualityLabel.textContent = variants.length > 1
-            ? `Fonte (${state.activeVariantIdx + 1}/${variants.length})`
-            : `Fonte: ${chosenVariant.label || 'HD'}`;
+            ? `⚙ ${state.activeVariantIdx + 1}/${variants.length}`
+            : '⚙';
 
         applyAspectRatioToVideo();
         updatePlayPauseButtonUI(false);
@@ -1730,17 +1739,73 @@
         }
     }
 
+    let scrubHideTimer = null;
+
+    function showScrubbingPreviewStrip(centerSeconds, durationSeconds) {
+        const strip = document.getElementById('player-scrub-strip');
+        if (!strip || !dom.playerOverlay) return;
+
+        dom.playerOverlay.classList.add('scrubbing-mode');
+        strip.classList.remove('hidden');
+
+        const logoUrl = (state.activeChannel && state.activeChannel.logo) ? state.activeChannel.logo : '';
+        const offsets = [-20, -10, 0, 10, 20];
+        const bgPositions = ['15% 35%', '32% 45%', '50% 50%', '68% 55%', '85% 65%'];
+
+        offsets.forEach((offset, idx) => {
+            const t = (durationSeconds && isFinite(durationSeconds) && durationSeconds > 0)
+                ? clamp(centerSeconds + offset, 0, durationSeconds)
+                : Math.max(0, centerSeconds + offset);
+
+            const timeEl = document.getElementById(`scrub-time-${idx}`);
+            if (timeEl) timeEl.textContent = formatSecondsToClock(t);
+
+            const artEl = document.getElementById(`scrub-art-${idx}`);
+            if (artEl) {
+                if (logoUrl) {
+                    artEl.style.backgroundImage = `url("${logoUrl.replace(/"/g, '\\"')}")`;
+                    artEl.style.backgroundPosition = bgPositions[idx];
+                } else {
+                    artEl.style.backgroundImage = 'linear-gradient(135deg, #1e293b, #0f172a)';
+                }
+            }
+        });
+
+        // Tenta desenhar o quadro real do vídeo no card central destacado
+        try {
+            const canvas = document.getElementById('scrub-center-canvas');
+            const video = dom.videoElement;
+            if (canvas && video && video.readyState >= 2) {
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                }
+            }
+        } catch (_) {}
+
+        clearTimeout(scrubHideTimer);
+        scrubHideTimer = setTimeout(() => {
+            hideScrubbingPreviewStrip();
+        }, 2400);
+    }
+
+    function hideScrubbingPreviewStrip() {
+        clearTimeout(scrubHideTimer);
+        const strip = document.getElementById('player-scrub-strip');
+        if (strip) strip.classList.add('hidden');
+        if (dom.playerOverlay) dom.playerOverlay.classList.remove('scrubbing-mode');
+    }
+
     function togglePlayPause() {
         const video = dom.videoElement;
         if (!video) return;
+        hideScrubbingPreviewStrip();
         if (video.paused) {
             safePlayVideo(video);
             updatePlayPauseButtonUI(false);
-            showPlayerActionToast('▶', 'Reproduzindo');
         } else {
             video.pause();
             updatePlayPauseButtonUI(true);
-            showPlayerActionToast('⏸', 'Pausado');
         }
         triggerPlayerOverlay();
     }
@@ -1760,11 +1825,7 @@
         } catch (_) {}
 
         updatePlayerTimelineUI();
-        const sign = deltaSeconds >= 0 ? '+' : '';
-        showPlayerActionToast(
-            deltaSeconds >= 0 ? '⏩' : '⏪',
-            `${sign}${deltaSeconds}s • ${formatSecondsToClock(target)}`
-        );
+        showScrubbingPreviewStrip(target, dur);
         triggerPlayerOverlay();
     }
 
@@ -1847,18 +1908,18 @@
         const tracks = getAvailableSubtitleTracks();
         if (tracks.length === 0) {
             const isLegChannel = state.activeChannel && /\[LEG\]|legendado/i.test(state.activeChannel.name || '');
-            const statusText = isLegChannel ? 'Embutida no Vídeo' : 'Áudio Dublado';
-            if (dom.pbtnSubtitlesLabel) dom.pbtnSubtitlesLabel.textContent = `Legenda: ${statusText}`;
-            if (dom.playerSubBadge) dom.playerSubBadge.textContent = `ÁUDIO/LEG: ${statusText.toUpperCase()}`;
+            const statusText = isLegChannel ? '✓ Original com legendas' : '✓ Português';
+            if (dom.pbtnSubtitlesLabel) dom.pbtnSubtitlesLabel.textContent = statusText;
+            if (dom.playerSubBadge) dom.playerSubBadge.textContent = statusText.toUpperCase();
             return;
         }
 
         if (state.subtitleTrackIdx < 0 || state.subtitleTrackIdx >= tracks.length) {
-            if (dom.pbtnSubtitlesLabel) dom.pbtnSubtitlesLabel.textContent = 'Legendas: Desativadas';
+            if (dom.pbtnSubtitlesLabel) dom.pbtnSubtitlesLabel.textContent = 'Português (Sem Legenda)';
             if (dom.playerSubBadge) dom.playerSubBadge.textContent = 'LEGENDA: OFF';
         } else {
             const activeTrack = tracks[state.subtitleTrackIdx];
-            if (dom.pbtnSubtitlesLabel) dom.pbtnSubtitlesLabel.textContent = `Legenda: ${activeTrack.label}`;
+            if (dom.pbtnSubtitlesLabel) dom.pbtnSubtitlesLabel.textContent = `✓ ${activeTrack.label} com legendas`;
             if (dom.playerSubBadge) dom.playerSubBadge.textContent = `LEGENDA: ${activeTrack.label.toUpperCase()}`;
         }
     }
@@ -2628,10 +2689,12 @@
                     } else if (isRight) {
                         seekVideoBy(10);
                     } else if (isDown) {
+                        hideScrubbingPreviewStrip();
                         state.playerHudZone = 'buttons';
                         state.playerCtrlIdx = clamp(state.playerCtrlIdx, 0, Math.max(0, visibleBtns.length - 1));
                         applyVisualFocus();
                     } else if (isUp) {
+                        hideScrubbingPreviewStrip();
                         clearTimeout(state.overlayTimer);
                         dom.playerOverlay.classList.add('overlay-hidden');
                     } else if (isEnter) {

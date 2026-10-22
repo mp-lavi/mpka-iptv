@@ -20,7 +20,7 @@
             <div class="brand">
                 <img src="icon.png" alt="MPKA Iptv" class="brand-icon-img" onerror="this.style.display='none'">
                 <span class="brand-logo">MPKA <span class="brand-accent">Iptv</span></span>
-                <span id="top-version-pill" class="top-version-pill">v2.4.0</span>
+                <span id="top-version-pill" class="top-version-pill">v2.5.0</span>
             </div>
 
             <!-- Pílula Central de Navegação (Home | Ao Vivo | Filmes | Séries | Buscar | Lista & PIN) -->
@@ -233,7 +233,7 @@
                     <p class="modal-subtitle">Use <strong>◄ / ►</strong> para trocar de aba e <strong>▲ / ▼</strong> + <strong>OK</strong> para selecionar os botões.</p>
                 </div>
                 <div class="settings-version-badges">
-                    <span id="settings-version-badge" class="modal-badge">Versão v2.4.0</span>
+                    <span id="settings-version-badge" class="modal-badge">Versão v2.5.0</span>
                     <span id="settings-ota-badge" class="modal-badge badge-ota">GitHub OTA Ativo</span>
                 </div>
             </div>
@@ -477,52 +477,69 @@
             <span id="player-spinner-text">Conectando ao stream...</span>
         </div>
 
-        <!-- Overlay de Controles Multimídia Estilo Netflix -->
+        <!-- Overlay de Controles Multimídia Idêntico às Fotos de Referência (Sem caixa preta, flutuante sobre o vídeo + Carrossel de 5 Quadros ao Avançar/Retroceder) -->
         <div id="player-overlay" class="player-overlay">
-            <div class="player-top-hud">
-                <div class="player-top-left">
-                    <div class="live-badge" id="player-type-badge">
-                        <span class="live-pulse"></span> <span id="player-type-text">AO VIVO</span>
+            <!-- Topo Flutuante: Esquerda (← e OPÇÕES) | Direita (Título e Episódio/Categoria limpos) -->
+            <div class="player-top-hud netflix-clean-top">
+                <div class="netflix-top-left">
+                    <div class="netflix-top-icons-row">
+                        <span class="netflix-back-arrow" id="btn-player-top-back" title="Voltar">←</span>
+                        <span class="netflix-opt-circle" id="btn-player-top-opt" title="Opções">⚙</span>
                     </div>
-                    <!-- Pílulas de Qualidade (4K / FHD / HD / SD) para o mesmo canal -->
+                    <span class="netflix-opt-caption">OPÇÕES</span>
                     <div id="player-variants-bar" class="player-variants-bar"></div>
                 </div>
-                <div class="player-top-right">
-                    <span id="player-aspect-badge" class="engine-badge">PROPORÇÃO: ORIGINAL</span>
-                    <span id="player-sub-badge" class="engine-badge">LEGENDA: AUTO</span>
-                    <div id="player-engine-tag" class="engine-badge">HLS.JS ENGINE</div>
+
+                <div class="netflix-top-right">
+                    <h2 class="netflix-top-title" id="player-channel-name">Nome do Título</h2>
+                    <div class="netflix-top-subtitle" id="player-channel-group">T1:E1 "Episódio"</div>
+                    <div id="player-epg-info" class="netflix-top-epg hidden">
+                        <span id="player-epg-now"></span>
+                        <span id="player-epg-next" class="sr-only"></span>
+                    </div>
+                </div>
+
+                <!-- Elementos de telemetria ocultos para compatibilidade interna -->
+                <div class="sr-only">
+                    <span id="player-type-text">VOD</span>
+                    <span id="player-aspect-badge">ORIGINAL</span>
+                    <span id="player-sub-badge">AUTO</span>
+                    <span id="player-engine-tag">HLS</span>
+                    <span id="player-buffer-status">OK</span>
+                    <span id="player-resolution-info">HD</span>
                 </div>
             </div>
 
-            <div class="player-bottom-hud netflix-player-hud">
-                <!-- Linha 1: Cabeçalho e Metadados do Filme/Série/Canal -->
-                <div class="player-meta-header">
-                    <div class="player-channel-meta">
-                        <div class="player-channel-Category" id="player-channel-group">CATEGORIA</div>
-                        <h2 class="player-channel-title" id="player-channel-name">Nome do Canal</h2>
-
-                        <!-- Linha EPG ou Progresso de Retomada VOD dentro do Player -->
-                        <div id="player-epg-info" class="player-epg-info">
-                            <span class="player-epg-now" id="player-epg-now">Agora: Programação Ao Vivo</span>
-                            <span class="player-epg-next" id="player-epg-next">A seguir: Próximo Programa</span>
-                        </div>
+            <!-- Rodapé Flutuante Limpo (Sem fundo preto encaixotado!) -->
+            <div class="player-bottom-hud netflix-clean-bottom">
+                <!-- Faixa de 5 Quadros de Pré-Visualização (Aparece ao pressionar ◄ / ► para Avançar ou Retroceder — Igual à Foto 1!) -->
+                <div id="player-scrub-strip" class="player-scrub-strip hidden">
+                    <div class="scrub-frame-card" id="scrub-card-0">
+                        <div class="scrub-frame-art" id="scrub-art-0"></div>
+                        <span class="scrub-frame-time" id="scrub-time-0">00:00</span>
                     </div>
-
-                    <div class="player-status-cluster">
-                        <div class="player-status-row">
-                            <span id="player-buffer-status" class="player-status-pill">Inicializando buffer...</span>
-                            <span id="player-resolution-info" class="player-resolution-pill">AUTO ABR</span>
-                        </div>
-                        <div class="player-exit-notice">
-                            <span class="back-icon">↩</span>
-                            <span><strong>Voltar</strong> para sair</span>
-                        </div>
+                    <div class="scrub-frame-card" id="scrub-card-1">
+                        <div class="scrub-frame-art" id="scrub-art-1"></div>
+                        <span class="scrub-frame-time" id="scrub-time-1">00:10</span>
+                    </div>
+                    <div class="scrub-frame-card scrub-frame-center" id="scrub-card-2">
+                        <canvas id="scrub-center-canvas" class="scrub-center-canvas" width="320" height="180"></canvas>
+                        <div class="scrub-frame-art" id="scrub-art-2"></div>
+                        <span class="scrub-frame-time" id="scrub-time-2">00:20</span>
+                    </div>
+                    <div class="scrub-frame-card" id="scrub-card-3">
+                        <div class="scrub-frame-art" id="scrub-art-3"></div>
+                        <span class="scrub-frame-time" id="scrub-time-3">00:30</span>
+                    </div>
+                    <div class="scrub-frame-card" id="scrub-card-4">
+                        <div class="scrub-frame-art" id="scrub-art-4"></div>
+                        <span class="scrub-frame-time" id="scrub-time-4">00:40</span>
                     </div>
                 </div>
 
-                <!-- Linha 2: Barra de Reprodução Estilo Netflix (Botão Play/Pause integrado ao lado da Barra de Duração; ◄ Retrocede / ► Avança / OK Play-Pause) -->
+                <!-- Linha da Barra de Duração: Botão Branco Redondo ( ⏸ ) à esquerda + 00:33 ━━━●━━━━━━ 25:18 (Igual à Foto 2!) -->
                 <div id="player-timeline-row" class="player-timeline-row focused" tabindex="-1">
-                    <button id="pbtn-playpause" class="netflix-inline-playbtn" data-action="playpause" tabindex="-1">
+                    <button id="pbtn-playpause" class="netflix-white-playbtn" data-action="playpause" tabindex="-1">
                         <span id="pbtn-playpause-icon" class="nplay-icon">⏸</span>
                         <span id="pbtn-playpause-label" class="sr-only">Pausar</span>
                     </button>
@@ -537,39 +554,32 @@
                     </div>
 
                     <span id="player-time-duration" class="player-time-label">00:00</span>
-                    <span class="netflix-scrub-hint">◄ -10s • OK Play/Pause • +10s ►</span>
                 </div>
 
-                <!-- Linha 3: Opções Inferiores Estilo Netflix (Pressione ▼ para acessar: Do Início, Próx. Episódio, Legendas, Proporção da Tela, Lista) -->
-                <div id="player-controls-bar" class="player-controls-bar netflix-sub-options">
-                    <button id="pbtn-restart" class="player-ctrl-btn" data-action="restart">
-                        <span class="pctrl-icon">⏮</span>
-                        <span class="pctrl-label">Do Início</span>
+                <!-- Linha de Pílulas Arredondadas Translúcidas Inferiores (Igual à Foto 2!) -->
+                <div id="player-controls-bar" class="player-controls-bar netflix-pills-row">
+                    <button id="pbtn-subtitles" class="player-ctrl-btn netflix-pill-btn" data-action="subtitles">
+                        <span id="pbtn-subtitles-label" class="pctrl-label">✓ Português / Legendas</span>
                     </button>
 
-                    <button id="pbtn-nextep" class="player-ctrl-btn hidden" data-action="nextep">
-                        <span class="pctrl-icon">⏭</span>
-                        <span class="pctrl-label">Próx. Episódio</span>
-                    </button>
-
-                    <button id="pbtn-subtitles" class="player-ctrl-btn" data-action="subtitles">
-                        <span class="pctrl-icon">💬</span>
-                        <span id="pbtn-subtitles-label" class="pctrl-label">Legendas: Off</span>
-                    </button>
-
-                    <button id="pbtn-aspect" class="player-ctrl-btn" data-action="aspect">
-                        <span class="pctrl-icon">📐</span>
+                    <button id="pbtn-aspect" class="player-ctrl-btn netflix-pill-btn" data-action="aspect">
                         <span id="pbtn-aspect-label" class="pctrl-label">Tela: Original</span>
                     </button>
 
-                    <button id="pbtn-quality" class="player-ctrl-btn" data-action="quality">
-                        <span class="pctrl-icon">🎚️</span>
-                        <span id="pbtn-quality-label" class="pctrl-label">Qualidade</span>
+                    <button id="pbtn-restart" class="player-ctrl-btn netflix-pill-btn" data-action="restart">
+                        <span class="pctrl-label">Do Início</span>
                     </button>
 
-                    <button id="pbtn-drawer" class="player-ctrl-btn" data-action="drawer">
-                        <span class="pctrl-icon">📺</span>
-                        <span id="pbtn-drawer-label" class="pctrl-label">Canais</span>
+                    <button id="pbtn-nextep" class="player-ctrl-btn netflix-pill-btn hidden" data-action="nextep">
+                        <span class="pctrl-label">Próx. Episódio</span>
+                    </button>
+
+                    <button id="pbtn-drawer" class="player-ctrl-btn netflix-pill-btn" data-action="drawer">
+                        <span id="pbtn-drawer-label" class="pctrl-label">Outros...</span>
+                    </button>
+
+                    <button id="pbtn-quality" class="player-ctrl-btn netflix-pill-btn netflix-pill-gear" data-action="quality" title="Qualidade / Fonte">
+                        <span id="pbtn-quality-label" class="pctrl-label">⚙</span>
                     </button>
                 </div>
             </div>

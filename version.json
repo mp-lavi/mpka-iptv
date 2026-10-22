@@ -1,5 +1,5 @@
 {
-  "version": "2.4.0",
+  "version": "2.5.0",
   "releasedAt": "2026-10-22",
-  "changelog": "v2.4.0: Aba de Configuracoes redesenhada em abas verticais simples + Barra do Player identica a Netflix (Play ao lado da barra de duracao e avanco/retrocesso direto nas setas)"
+  "changelog": "v2.5.0: Nova HUD do Player identica as fotos (flutuante sem caixa preta, botao Play branco redondo, pilulas translucidas e faixa de 5 quadros ao avancar/retroceder)"
 }
