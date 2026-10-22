@@ -10,7 +10,7 @@
 (function () {
     'use strict';
 
-    window.MPKA_FACTORY_VERSION = '2.3.0';
+    window.MPKA_FACTORY_VERSION = '2.4.0';
     var OTA_STORAGE_KEY = 'mpka_ota_bundle_v1';
 
     function compareSemver(a, b) {

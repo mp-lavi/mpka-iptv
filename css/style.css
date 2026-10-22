@@ -1083,11 +1083,134 @@ html, body {
     gap: 15px;
 }
 
-.settings-dialog-wide {
-    width: 1220px;
-    max-width: 94vw;
-    padding: 24px 32px;
+.settings-dialog-clean {
+    width: 960px;
+    max-width: 92vw;
+    padding: 26px 34px;
     gap: 14px;
+}
+
+.top-version-pill {
+    font-size: 11px;
+    font-weight: 800;
+    color: #9ca3af;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    padding: 3px 9px;
+    border-radius: 999px;
+    margin-left: 8px;
+    letter-spacing: 0.5px;
+}
+
+.settings-tabs-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #0d1016;
+    padding: 6px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.settings-tab-btn {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: 9px;
+    background: transparent;
+    border: 2px solid transparent;
+    color: #9ca3af;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 140ms ease;
+}
+
+.settings-tab-btn.active {
+    background: rgba(229, 9, 20, 0.22);
+    border-color: var(--accent-red);
+    color: #ffffff;
+    box-shadow: 0 0 16px rgba(229, 9, 20, 0.25);
+}
+
+.settings-tab-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 290px;
+    justify-content: center;
+}
+
+.settings-big-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-radius: 12px;
+    background: #1b2029;
+    border: 2px solid rgba(255, 255, 255, 0.10);
+    color: #ffffff;
+    text-align: left;
+    cursor: pointer;
+    outline: none;
+    transition: transform 140ms ease, border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+}
+
+.settings-big-btn-primary {
+    background: linear-gradient(135deg, rgba(229, 9, 20, 0.28), rgba(37, 99, 235, 0.22));
+    border-color: rgba(229, 9, 20, 0.45);
+}
+
+.settings-big-btn.focused {
+    transform: scale(1.025);
+    background: rgba(229, 9, 20, 0.28);
+    border-color: #ffffff;
+    box-shadow: 0 0 24px var(--accent-red-glow);
+}
+
+.sbtn-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.sbtn-icon {
+    font-size: 24px;
+    width: 36px;
+    text-align: center;
+}
+
+.sbtn-texts {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.sbtn-texts strong {
+    font-size: 16px;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.sbtn-texts small {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.sbtn-badge {
+    font-size: 12px;
+    font-weight: 800;
+    padding: 6px 14px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.10);
+    color: #f3f4f6;
+    white-space: nowrap;
+}
+
+.sbtn-badge.badge-green {
+    background: rgba(16, 185, 129, 0.22);
+    border: 1px solid #10b981;
+    color: #6ee7b7;
 }
 
 .settings-version-badges {
@@ -1101,61 +1224,6 @@ html, body {
     background: rgba(16, 185, 129, 0.18);
     border-color: #10b981;
     color: #6ee7b7;
-}
-
-.settings-grid {
-    display: grid;
-    grid-template-columns: 1.08fr 0.92fr;
-    gap: 20px;
-    align-items: stretch;
-}
-
-.settings-card-panel {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    border-radius: 14px;
-    padding: 16px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 9px;
-}
-
-.settings-panel-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 2px;
-}
-
-.settings-panel-divider {
-    margin-top: 8px;
-    padding-top: 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.settings-panel-icon {
-    font-size: 18px;
-}
-
-.settings-panel-title {
-    font-size: 16px;
-    font-weight: 800;
-    color: #ffffff;
-    letter-spacing: 0.3px;
-}
-
-.ota-buttons-stack {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 2px;
-}
-
-.modal-btn-ota {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
-    color: #ffffff;
-    border-color: rgba(147, 197, 253, 0.35);
-    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
 }
 
 .modal-header {
@@ -1804,23 +1872,64 @@ html, body {
 
 .back-icon { font-size: 16px; color: var(--accent-red); }
 
-/* Barra de Progresso Interativa (Timeline Scrubber Estilo Netflix) */
+/* Barra de Progresso Interativa (Timeline Scrubber Estilo Netflix com Play integrado) */
 .player-timeline-row {
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 8px 12px;
-    border-radius: 10px;
-    border: 2px solid transparent;
-    background: rgba(255, 255, 255, 0.03);
-    transition: border-color 150ms ease, background-color 150ms ease;
+    padding: 10px 16px;
+    border-radius: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.10);
+    background: rgba(14, 17, 23, 0.78);
+    transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
     cursor: pointer;
 }
 
 .player-timeline-row.focused {
     border-color: #ffffff;
-    background: rgba(229, 9, 20, 0.14);
-    box-shadow: 0 0 20px rgba(229, 9, 20, 0.45);
+    background: rgba(229, 9, 20, 0.16);
+    box-shadow: 0 0 24px rgba(229, 9, 20, 0.50);
+}
+
+.netflix-inline-playbtn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.14);
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 150ms ease;
+}
+
+.player-timeline-row.focused .netflix-inline-playbtn {
+    background: var(--accent-red);
+    border-color: #ffffff;
+    transform: scale(1.08);
+    box-shadow: 0 0 18px var(--accent-red-glow);
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+}
+
+.netflix-scrub-hint {
+    font-size: 12px;
+    font-weight: 800;
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 6px 12px;
+    border-radius: 8px;
+    white-space: nowrap;
 }
 
 .player-time-label {

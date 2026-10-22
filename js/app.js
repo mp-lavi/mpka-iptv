@@ -115,9 +115,10 @@
         aspectModeIdx: 0,
         subtitleTrackIdx: -1, // -1 = Desativado, >= 0 = Índice da trilha de legenda
 
-        // Auto-Atualização GitHub OTA
+        // Auto-Atualização GitHub OTA & Abas de Configurações
         githubRepo: 'mp-lavi/mpka-iptv',
-        otaAutoEnabled: true
+        otaAutoEnabled: true,
+        settingsTabIdx: 0 // 0 = 'update', 1 = 'playlist', 2 = 'parental'
     };
 
     // Referências DOM
@@ -1325,14 +1326,18 @@
 
         if (state.mode === 'modal') {
             const modalControls = getModalControls();
+            state.modalIndex = clamp(state.modalIndex, 0, Math.max(0, modalControls.length - 1));
             const activeCtrl = modalControls[state.modalIndex] || modalControls[0];
-            activeCtrl.classList.add('focused');
-            if (activeCtrl.tagName === 'INPUT' || activeCtrl.tagName === 'TEXTAREA') {
-                activeCtrl.focus();
-            } else {
-                dom.inputM3uUrl.blur();
-                dom.inputEpgUrl.blur();
-                dom.inputM3uRaw.blur();
+            if (activeCtrl) {
+                activeCtrl.classList.add('focused');
+                if (activeCtrl.tagName === 'INPUT' || activeCtrl.tagName === 'TEXTAREA') {
+                    activeCtrl.focus();
+                } else {
+                    if (dom.inputM3uUrl) dom.inputM3uUrl.blur();
+                    if (dom.inputEpgUrl) dom.inputEpgUrl.blur();
+                    if (dom.inputM3uRaw) dom.inputM3uRaw.blur();
+                    if (dom.inputGithubRepo) dom.inputGithubRepo.blur();
+                }
             }
             return;
         }
@@ -1522,15 +1527,15 @@
         if (!channel || !channel.url) return;
 
         addToContinueWatching(channel);
+        const isVod = channel.section !== 'live';
+
         state.mode = 'player';
         state.activeChannel = channel;
         state.activeVariantIdx = variantIndex;
-        state.playerHudZone = 'buttons';
+        state.playerHudZone = isVod ? 'timeline' : 'buttons';
         state.playerCtrlIdx = 0;
         dom.playerChannelDrawer.classList.add('hidden');
         dom.playerSubtitleBox.classList.add('hidden');
-
-        const isVod = channel.section !== 'live';
 
         const variants = (channel.variants && channel.variants.length > 0)
             ? channel.variants
@@ -1548,9 +1553,7 @@
 
         // Configura visibilidade dos controles conforme tipo (VOD vs Ao Vivo)
         dom.playerTimelineRow.classList.toggle('hidden', !isVod);
-        dom.pbtnRew.classList.toggle('hidden', !isVod);
-        dom.pbtnFwd.classList.toggle('hidden', !isVod);
-        dom.pbtnRestart.classList.toggle('hidden', !isVod);
+        if (dom.pbtnRestart) dom.pbtnRestart.classList.toggle('hidden', !isVod);
 
         const nextEp = getNextEpisodeForCurrentChannel();
         dom.pbtnNextEp.classList.toggle('hidden', !nextEp);
@@ -2121,11 +2124,14 @@
         dom.playerOverlay.classList.remove('overlay-hidden');
         applyVisualFocus();
         clearTimeout(state.overlayTimer);
+        if (dom.videoElement && dom.videoElement.paused) {
+            return; // Enquanto estiver pausado, a barra estilo Netflix permanece fixa na tela
+        }
         state.overlayTimer = setTimeout(() => {
-            if (state.mode === 'player' && !dom.videoElement.paused) {
+            if (state.mode === 'player' && dom.videoElement && !dom.videoElement.paused) {
                 dom.playerOverlay.classList.add('overlay-hidden');
             }
-        }, 5000);
+        }, 7500);
     }
 
     function showPlayerSpinner(message) {
@@ -2139,51 +2145,90 @@
 
     /**
      * ========================================================================
-     * CENTRAL DE CONFIGURAÇÕES (LISTA M3U + EPG + GITHUB OTA + PIN PARENTAL)
+     * CENTRAL DE CONFIGURAÇÕES POR ABAS SIMPLES (100% VERTICAL ▲/▼ + ABAS ◄/►)
      * ========================================================================
      */
+    const SETTINGS_TABS = ['update', 'playlist', 'parental'];
+
+    function switchSettingsTab(tabIdx) {
+        state.settingsTabIdx = clamp(tabIdx, 0, SETTINGS_TABS.length - 1);
+        state.modalIndex = 0;
+
+        const activeTabId = SETTINGS_TABS[state.settingsTabIdx];
+        document.querySelectorAll('.settings-tab-btn').forEach((btn, idx) => {
+            btn.classList.toggle('active', idx === state.settingsTabIdx);
+        });
+
+        SETTINGS_TABS.forEach(tabKey => {
+            const panel = document.getElementById(`stab-panel-${tabKey}`);
+            if (panel) panel.classList.toggle('hidden', tabKey !== activeTabId);
+        });
+
+        applyVisualFocus();
+    }
+
     function getModalControls() {
+        const activeTabId = SETTINGS_TABS[state.settingsTabIdx] || 'update';
+        if (activeTabId === 'update') {
+            return [
+                dom.btnCheckOta,
+                dom.btnRefreshPlaylist,
+                dom.btnToggleAutoOta,
+                dom.btnResetOta,
+                dom.btnCloseModal
+            ].filter(Boolean);
+        }
+        if (activeTabId === 'playlist') {
+            return [
+                dom.inputM3uUrl,
+                dom.inputEpgUrl,
+                dom.inputGithubRepo,
+                dom.btnSaveM3u,
+                dom.btnRestoreDefault,
+                dom.btnCloseModal
+            ].filter(Boolean);
+        }
         return [
-            dom.inputM3uUrl,
-            dom.inputEpgUrl,
-            dom.inputM3uRaw,
-            dom.btnRefreshPlaylist,
-            dom.btnRestoreDefault,
-            dom.inputGithubRepo,
-            dom.btnCheckOta,
-            dom.btnToggleAutoOta,
-            dom.btnResetOta,
             dom.btnChangePin,
             dom.btnLockAdultNow,
-            dom.btnSaveM3u,
             dom.btnCloseModal
         ].filter(Boolean);
     }
 
     function updateOtaSettingsUI() {
-        const activeVer = window.MPKA_ACTIVE_VERSION || window.MPKA_FACTORY_VERSION || '2.3.0';
+        const activeVer = window.MPKA_ACTIVE_VERSION || window.MPKA_FACTORY_VERSION || '2.4.0';
         const otaSource = window.MPKA_OTA_SOURCE || 'Fábrica (.wgt)';
         if (dom.settingsVersionBadge) {
             dom.settingsVersionBadge.textContent = `Versão v${activeVer}`;
+        }
+        const topVerPill = document.getElementById('top-version-pill');
+        if (topVerPill) {
+            topVerPill.textContent = `v${activeVer}`;
         }
         if (dom.settingsOtaBadge) {
             dom.settingsOtaBadge.textContent = otaSource;
         }
         if (dom.inputGithubRepo && document.activeElement !== dom.inputGithubRepo) {
-            dom.inputGithubRepo.value = state.githubRepo || '';
+            dom.inputGithubRepo.value = state.githubRepo || 'mp-lavi/mpka-iptv';
         }
-        if (dom.btnToggleAutoOta) {
-            dom.btnToggleAutoOta.textContent = `🔁 Auto-Atualizar ao Abrir: ${state.otaAutoEnabled ? 'ATIVADO' : 'DESATIVADO'}`;
+        const autoTitle = document.getElementById('autoota-title-text');
+        const autoPill = document.getElementById('autoota-pill-badge');
+        if (autoTitle) {
+            autoTitle.textContent = `Auto-Atualização ao Abrir o App: ${state.otaAutoEnabled ? 'ATIVADO' : 'DESATIVADO'}`;
+        }
+        if (autoPill) {
+            autoPill.textContent = state.otaAutoEnabled ? 'ATIVADO' : 'DESATIVADO';
+            autoPill.classList.toggle('badge-green', state.otaAutoEnabled);
         }
     }
 
     function openSettingsModal() {
         state.mode = 'modal';
-        state.modalIndex = 0;
         updateOtaSettingsUI();
+        switchSettingsTab(0);
         dom.settingsModal.classList.remove('hidden');
         dom.settingsModal.setAttribute('aria-hidden', 'false');
-        setModalFeedback(`Use as setas ▲/▼/◄/► para navegar. Controle Parental: ${state.parentalUnlocked ? 'Desbloqueado na sessão' : 'Bloqueado (+18 protegido)'}.`, '');
+        setModalFeedback(`Use ▲ / ▼ para escolher um botão e OK para confirmar. Use ◄ / ► para alternar entre as 3 abas acima.`, '');
         applyVisualFocus();
     }
 
@@ -2533,12 +2578,12 @@
                 }
                 if (keyCode === KEYS.MEDIA_REWIND) {
                     triggerPlayerOverlay();
-                    seekVideoBy(-15);
+                    seekVideoBy(-10);
                     return;
                 }
                 if (keyCode === KEYS.MEDIA_FAST_FORWARD) {
                     triggerPlayerOverlay();
-                    seekVideoBy(15);
+                    seekVideoBy(10);
                     return;
                 }
                 if (isChUp) {
@@ -2553,22 +2598,19 @@
                 }
 
                 const hudWasHidden = dom.playerOverlay.classList.contains('overlay-hidden');
-                const isLive = isCurrentChannelLive();
-                const visibleBtns = getVisiblePlayerButtons();
+                const isLive = !state.activeChannel || state.activeChannel.section === 'live';
+                const visibleBtns = getVisiblePlayerControlButtons();
 
                 // Se a HUD estava oculta na tela:
                 if (hudWasHidden) {
+                    state.playerHudZone = isLive ? 'buttons' : 'timeline';
                     triggerPlayerOverlay();
                     if (isEnter) {
                         togglePlayPause();
                     } else if (!isLive && isLeft) {
-                        state.playerHudZone = 'timeline';
-                        applyVisualFocus();
-                        seekVideoBy(-15);
+                        seekVideoBy(-10);
                     } else if (!isLive && isRight) {
-                        state.playerHudZone = 'timeline';
-                        applyVisualFocus();
-                        seekVideoBy(15);
+                        seekVideoBy(10);
                     } else if (isLive && isUp) {
                         zapChannelInPlayer(-1);
                     } else if (isLive && isDown) {
@@ -2577,25 +2619,28 @@
                     return;
                 }
 
-                // A HUD já está visível: navega entre Linha do Tempo e Barra de Botões
+                // A HUD já está visível: funciona igual à barra da Netflix!
                 triggerPlayerOverlay();
 
                 if (state.playerHudZone === 'timeline' && !isLive) {
                     if (isLeft) {
-                        seekVideoBy(-15);
+                        seekVideoBy(-10);
                     } else if (isRight) {
-                        seekVideoBy(15);
+                        seekVideoBy(10);
                     } else if (isDown) {
                         state.playerHudZone = 'buttons';
                         state.playerCtrlIdx = clamp(state.playerCtrlIdx, 0, Math.max(0, visibleBtns.length - 1));
                         applyVisualFocus();
+                    } else if (isUp) {
+                        clearTimeout(state.overlayTimer);
+                        dom.playerOverlay.classList.add('overlay-hidden');
                     } else if (isEnter) {
                         togglePlayPause();
                     }
                     return;
                 }
 
-                // Zona de botões da barra de controles
+                // Zona de botões inferiores secundários (Do Início, Próx. Episódio, Legendas, Tela, Qualidade, Canais)
                 state.playerHudZone = 'buttons';
                 if (isLeft) {
                     if (state.playerCtrlIdx > 0) {
@@ -2761,12 +2806,12 @@
                 return;
             }
 
-            // 5. CENTRAL DE CONFIGURAÇÕES (LISTA IPTV / EPG / GITHUB OTA / PIN)
+            // 5. CENTRAL DE CONFIGURAÇÕES POR ABAS (▲/▼ sobe e desce os botões; ◄/► troca de aba)
             if (state.mode === 'modal') {
                 if (isBack) { event.preventDefault(); closeSettingsModal(); return; }
                 const controls = getModalControls();
                 const activeCtrl = controls[state.modalIndex];
-                const isButton = activeCtrl && activeCtrl.tagName === 'BUTTON';
+                const isTextInput = activeCtrl && (activeCtrl.tagName === 'INPUT' || activeCtrl.tagName === 'TEXTAREA');
 
                 if (isDown) {
                     event.preventDefault();
@@ -2776,14 +2821,12 @@
                     event.preventDefault();
                     state.modalIndex = clamp(state.modalIndex - 1, 0, controls.length - 1);
                     applyVisualFocus();
-                } else if (isLeft && isButton) {
+                } else if (isLeft && !isTextInput) {
                     event.preventDefault();
-                    state.modalIndex = clamp(state.modalIndex - 1, 0, controls.length - 1);
-                    applyVisualFocus();
-                } else if (isRight && isButton) {
+                    switchSettingsTab(state.settingsTabIdx - 1);
+                } else if (isRight && !isTextInput) {
                     event.preventDefault();
-                    state.modalIndex = clamp(state.modalIndex + 1, 0, controls.length - 1);
-                    applyVisualFocus();
+                    switchSettingsTab(state.settingsTabIdx + 1);
                 } else if (isEnter) {
                     if (activeCtrl === dom.btnRefreshPlaylist) { event.preventDefault(); await handleRefreshPlaylistNow(); }
                     else if (activeCtrl === dom.btnRestoreDefault) { event.preventDefault(); await handleRestoreDefaultChannels(); }
@@ -3016,6 +3059,10 @@
         if (dom.btnToggleAutoOta) dom.btnToggleAutoOta.addEventListener('click', toggleAutoOtaSetting);
         if (dom.btnResetOta) dom.btnResetOta.addEventListener('click', resetOtaToFactory);
 
+        document.querySelectorAll('.settings-tab-btn').forEach((tabBtn, idx) => {
+            tabBtn.addEventListener('click', () => switchSettingsTab(idx));
+        });
+
         const playlistInd = document.getElementById('playlist-indicator');
         if (playlistInd) playlistInd.addEventListener('click', openSettingsModal);
         if (dom.parentalBadge) dom.parentalBadge.addEventListener('click', openSettingsModal);
@@ -3037,13 +3084,13 @@
         dom.btnEpgFav.addEventListener('click', () => toggleFavoriteCurrentChannel());
         dom.btnEpgClose.addEventListener('click', closeEpgModal);
 
-        // Cliques nos botões da barra multimídia do Player
+        // Cliques nos botões da barra multimídia secundária do Player
         if (dom.playerControlsBar) {
             dom.playerControlsBar.addEventListener('click', (e) => {
                 const btn = e.target.closest('.player-ctrl-btn');
                 if (!btn || !btn.dataset.action) return;
                 triggerPlayerOverlay();
-                const visibleBtns = getVisiblePlayerButtons();
+                const visibleBtns = getVisiblePlayerControlButtons();
                 const idx = visibleBtns.indexOf(btn);
                 if (idx !== -1) {
                     state.playerHudZone = 'buttons';
@@ -3054,10 +3101,15 @@
             });
         }
 
-        // Clique na barra de progresso (Seekbar) para pular para o ponto clicado
+        // Clique na barra de progresso (Seekbar) ou no botão Play/Pause integrado estilo Netflix
         if (dom.playerTimelineRow) {
             dom.playerTimelineRow.addEventListener('click', (e) => {
-                if (isCurrentChannelLive()) return;
+                if (e.target.closest('#pbtn-playpause')) {
+                    state.playerHudZone = 'timeline';
+                    togglePlayPause();
+                    return;
+                }
+                if (!state.activeChannel || state.activeChannel.section === 'live') return;
                 const track = document.getElementById('player-seekbar-track');
                 if (!track || !dom.videoElement || !dom.videoElement.duration) return;
                 const rect = track.getBoundingClientRect();

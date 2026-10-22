@@ -20,6 +20,7 @@
             <div class="brand">
                 <img src="icon.png" alt="MPKA Iptv" class="brand-icon-img" onerror="this.style.display='none'">
                 <span class="brand-logo">MPKA <span class="brand-accent">Iptv</span></span>
+                <span id="top-version-pill" class="top-version-pill">v2.4.0</span>
             </div>
 
             <!-- Pílula Central de Navegação (Home | Ao Vivo | Filmes | Séries | Buscar | Lista & PIN) -->
@@ -223,121 +224,161 @@
         </div>
     </div>
 
-    <!-- CENTRAL DE CONFIGURAÇÕES (Lista IPTV + EPG + Auto-Atualização GitHub OTA + Controle Parental) -->
+    <!-- CENTRAL DE CONFIGURAÇÕES POR ABAS SIMPLES (Navegação 100% Vertical ▲/▼ + Abas ◄/►) -->
     <div id="settings-modal" class="modal-backdrop hidden" aria-hidden="true">
-        <div class="modal-dialog settings-dialog-wide">
+        <div class="modal-dialog settings-dialog-clean">
             <div class="modal-header">
                 <div>
                     <h2 class="modal-title">⚙️ Configurações — MPKA Iptv</h2>
-                    <p class="modal-subtitle">Gerencie sua Lista IPTV (Ao Vivo, Filmes, Séries & EPG), Controle Parental (+18) e Atualizações Automáticas direto pelo GitHub.</p>
+                    <p class="modal-subtitle">Use <strong>◄ / ►</strong> para trocar de aba e <strong>▲ / ▼</strong> + <strong>OK</strong> para selecionar os botões.</p>
                 </div>
                 <div class="settings-version-badges">
-                    <span id="settings-version-badge" class="modal-badge">Versão v2.3.0</span>
-                    <span id="settings-ota-badge" class="modal-badge badge-ota">Fábrica / OTA Pronto</span>
+                    <span id="settings-version-badge" class="modal-badge">Versão v2.4.0</span>
+                    <span id="settings-ota-badge" class="modal-badge badge-ota">GitHub OTA Ativo</span>
                 </div>
             </div>
 
-            <div class="settings-grid">
-                <!-- COLUNA ESQUERDA: LISTA IPTV M3U / XTREAM & EPG -->
-                <div class="settings-card-panel">
-                    <div class="settings-panel-header">
-                        <span class="settings-panel-icon">📺</span>
-                        <h3 class="settings-panel-title">Lista de Canais IPTV & Guia EPG</h3>
-                    </div>
+            <!-- Barra de Abas Internas das Configurações (Troca com ◄ / ►) -->
+            <div class="settings-tabs-bar" id="settings-tabs-bar">
+                <button class="settings-tab-btn active" data-stab="update">🚀 1. Atualização & Rápido</button>
+                <button class="settings-tab-btn" data-stab="playlist">📺 2. Lista IPTV & EPG</button>
+                <button class="settings-tab-btn" data-stab="parental">🔞 3. Controle Parental (+18)</button>
+            </div>
 
-                    <label class="field-label" for="input-m3u-url">1. URL da Lista IPTV (.m3u, .m3u8 ou link curto SS-IPTV / Xtream)</label>
-                    <input
-                        type="url"
-                        id="input-m3u-url"
-                        class="modal-input"
-                        placeholder="http://ubkeqzg.biz/ss-ts/586960/jxkChq"
-                        autocomplete="off"
-                    />
+            <!-- ABA 1: ATUALIZAÇÃO GITHUB & AÇÕES RÁPIDAS (Botões grandes verticais) -->
+            <div id="stab-panel-update" class="settings-tab-panel">
+                <button id="btn-check-ota" class="settings-big-btn settings-big-btn-primary">
+                    <span class="sbtn-left">
+                        <span class="sbtn-icon">🚀</span>
+                        <span class="sbtn-texts">
+                            <strong>Buscar e Instalar Atualização (GitHub)</strong>
+                            <small>Baixa a versão mais nova de mp-lavi/mpka-iptv e reinicia o app</small>
+                        </span>
+                    </span>
+                    <span class="sbtn-badge">ATUALIZAR AGORA</span>
+                </button>
 
-                    <label class="field-label" for="input-epg-url">2. URL do Guia de Programação EPG (XMLTV — automático p/ Xtream)</label>
-                    <input
-                        type="url"
-                        id="input-epg-url"
-                        class="modal-input"
-                        placeholder="http://ubkeqzg.biz:80/xmltv.php?username=586960&password=jxkChq"
-                        autocomplete="off"
-                    />
+                <button id="btn-refresh-playlist" class="settings-big-btn">
+                    <span class="sbtn-left">
+                        <span class="sbtn-icon">🔄</span>
+                        <span class="sbtn-texts">
+                            <strong>Recarregar Lista de Canais, Filmes, Séries & EPG</strong>
+                            <small>Atualiza todos os canais e programação sem precisar digitar a lista novamente</small>
+                        </span>
+                    </span>
+                    <span class="sbtn-badge">RECARREGAR</span>
+                </button>
 
-                    <label class="field-label" for="input-m3u-raw">3. Ou cole o texto bruto da lista (#EXTM3U / #EXTINF...)</label>
-                    <textarea
-                        id="input-m3u-raw"
-                        class="modal-textarea"
-                        rows="2"
-                        placeholder="#EXTM3U&#10;#EXTINF:-1 group-title=&quot;Esportes&quot;,Meu Canal&#10;https://meu-stream.com/live.m3u8"
-                    ></textarea>
+                <button id="btn-toggle-autoota" class="settings-big-btn">
+                    <span class="sbtn-left">
+                        <span class="sbtn-icon">🔁</span>
+                        <span class="sbtn-texts">
+                            <strong id="autoota-title-text">Auto-Atualização ao Abrir o App: ATIVADO</strong>
+                            <small>Verifica automaticamente no GitHub sempre que você liga o aplicativo</small>
+                        </span>
+                    </span>
+                    <span id="autoota-pill-badge" class="sbtn-badge badge-green">ATIVADO</span>
+                </button>
 
-                    <div class="parental-settings-row">
-                        <button id="btn-refresh-playlist" class="modal-btn modal-btn-secondary">
-                            🔄 Atualizar Lista & EPG Agora
-                        </button>
-                        <button id="btn-restore-default" class="modal-btn modal-btn-secondary">
-                            🎞️ Restaurar Demo
-                        </button>
-                    </div>
-                </div>
+                <button id="btn-reset-ota" class="settings-big-btn">
+                    <span class="sbtn-left">
+                        <span class="sbtn-icon">🧹</span>
+                        <span class="sbtn-texts">
+                            <strong>Restaurar Versão de Fábrica (Limpar Cache OTA)</strong>
+                            <small>Volta para a versão base instalada no pacote .wgt da TV</small>
+                        </span>
+                    </span>
+                    <span class="sbtn-badge">RESTAURAR</span>
+                </button>
+            </div>
 
-                <!-- COLUNA DIREITA: AUTO-ATUALIZAÇÃO GITHUB (OTA) & CONTROLE PARENTAL -->
-                <div class="settings-card-panel">
-                    <div class="settings-panel-header">
-                        <span class="settings-panel-icon">☁️</span>
-                        <h3 class="settings-panel-title">Atualização do App (GitHub OTA)</h3>
-                    </div>
+            <!-- ABA 2: CONFIGURAR LISTA IPTV & EPG (1 item por linha) -->
+            <div id="stab-panel-playlist" class="settings-tab-panel hidden">
+                <label class="field-label" for="input-m3u-url">1. URL da Lista IPTV (.m3u, .m3u8 ou link curto SS-IPTV / Xtream)</label>
+                <input
+                    type="url"
+                    id="input-m3u-url"
+                    class="modal-input"
+                    placeholder="http://ubkeqzg.biz/ss-ts/586960/jxkChq"
+                    autocomplete="off"
+                />
 
-                    <label class="field-label" for="input-github-repo">Repositório GitHub (Configurado: <code>mp-lavi/mpka-iptv</code>)</label>
-                    <input
-                        type="url"
-                        id="input-github-repo"
-                        class="modal-input"
-                        value="mp-lavi/mpka-iptv"
-                        placeholder="mp-lavi/mpka-iptv"
-                        autocomplete="off"
-                    />
+                <label class="field-label" for="input-epg-url">2. URL do Guia EPG (Opcional — automático para listas Xtream)</label>
+                <input
+                    type="url"
+                    id="input-epg-url"
+                    class="modal-input"
+                    placeholder="http://ubkeqzg.biz:80/xmltv.php?username=586960&password=jxkChq"
+                    autocomplete="off"
+                />
 
-                    <div class="ota-buttons-stack">
-                        <button id="btn-check-ota" class="modal-btn modal-btn-ota">
-                            🚀 Buscar e Atualizar App pelo GitHub Agora
-                        </button>
-                        <div class="parental-settings-row">
-                            <button id="btn-toggle-autoota" class="modal-btn modal-btn-secondary">
-                                🔁 Auto-Atualizar ao Abrir: ATIVADO
-                            </button>
-                            <button id="btn-reset-ota" class="modal-btn modal-btn-ghost">
-                                🧹 Versão de Fábrica
-                            </button>
-                        </div>
-                    </div>
+                <label class="field-label" for="input-github-repo">3. Repositório GitHub para Atualização OTA</label>
+                <input
+                    type="url"
+                    id="input-github-repo"
+                    class="modal-input"
+                    value="mp-lavi/mpka-iptv"
+                    placeholder="mp-lavi/mpka-iptv"
+                    autocomplete="off"
+                />
 
-                    <div class="settings-panel-header settings-panel-divider">
-                        <span class="settings-panel-icon">🔞</span>
-                        <h3 class="settings-panel-title">Controle Parental (+18)</h3>
-                    </div>
+                <textarea id="input-m3u-raw" class="modal-textarea hidden" rows="1"></textarea>
 
-                    <div class="parental-settings-row">
-                        <button id="btn-change-pin" class="modal-btn modal-btn-secondary">
-                            🔑 Alterar PIN (Padrão: 0000)
-                        </button>
-                        <button id="btn-lock-adult-now" class="modal-btn modal-btn-secondary">
-                            🔒 Bloquear +18 Agora
-                        </button>
-                    </div>
-                </div>
+                <button id="btn-save-m3u" class="settings-big-btn settings-big-btn-primary">
+                    <span class="sbtn-left">
+                        <span class="sbtn-icon">💾</span>
+                        <span class="sbtn-texts">
+                            <strong>Salvar Lista & Carregar Canais</strong>
+                            <small>Salva os endereços acima na memória da TV e atualiza o catálogo</small>
+                        </span>
+                    </span>
+                    <span class="sbtn-badge">SALVAR</span>
+                </button>
+
+                <button id="btn-restore-default" class="settings-big-btn">
+                    <span class="sbtn-left">
+                        <span class="sbtn-icon">🎞️</span>
+                        <span class="sbtn-texts">
+                            <strong>Restaurar Lista de Demonstração</strong>
+                            <small>Volta para os 6 canais/filmes abertos de teste</small>
+                        </span>
+                    </span>
+                    <span class="sbtn-badge">DEMO</span>
+                </button>
+            </div>
+
+            <!-- ABA 3: CONTROLE PARENTAL (+18) -->
+            <div id="stab-panel-parental" class="settings-tab-panel hidden">
+                <button id="btn-change-pin" class="settings-big-btn">
+                    <span class="sbtn-left">
+                        <span class="sbtn-icon">🔑</span>
+                        <span class="sbtn-texts">
+                            <strong>Alterar Senha PIN de 4 Dígitos (Padrão: 0000)</strong>
+                            <small>Protege categorias e canais adultos (+18 / XXX) com senha</small>
+                        </span>
+                    </span>
+                    <span class="sbtn-badge">ALTERAR PIN</span>
+                </button>
+
+                <button id="btn-lock-adult-now" class="settings-big-btn">
+                    <span class="sbtn-left">
+                        <span class="sbtn-icon">🔒</span>
+                        <span class="sbtn-texts">
+                            <strong>Bloquear Sessão +18 Agora</strong>
+                            <small>Oculta imediatamente os conteúdos adultos até que o PIN seja digitado de novo</small>
+                        </span>
+                    </span>
+                    <span class="sbtn-badge">BLOQUEAR</span>
+                </button>
             </div>
 
             <div id="modal-feedback" class="modal-feedback">
-                Dica: Use as setas ▲/▼/◄/► para navegar pelas Configurações. Configure seu repositório GitHub para atualizar sem cabos ou PC!
+                Use ▲ / ▼ para escolher uma opção e pressione OK. Use ◄ / ► para alternar entre as 3 abas acima.
             </div>
 
             <div class="modal-actions">
-                <button id="btn-save-m3u" class="modal-btn modal-btn-primary">
-                    💾 Salvar Configurações & Carregar Lista
-                </button>
                 <button id="btn-close-modal" class="modal-btn modal-btn-ghost">
-                    ✖ Fechar Configurações (Voltar)
+                    ✖ Fechar Configurações (Tecla Voltar)
                 </button>
             </div>
         </div>
@@ -479,35 +520,28 @@
                     </div>
                 </div>
 
-                <!-- Linha 2: Barra de Progresso / Scrubber Estilo Netflix (Para Filmes e Séries VOD) -->
-                <div id="player-timeline-row" class="player-timeline-row" tabindex="-1">
+                <!-- Linha 2: Barra de Reprodução Estilo Netflix (Botão Play/Pause integrado ao lado da Barra de Duração; ◄ Retrocede / ► Avança / OK Play-Pause) -->
+                <div id="player-timeline-row" class="player-timeline-row focused" tabindex="-1">
+                    <button id="pbtn-playpause" class="netflix-inline-playbtn" data-action="playpause" tabindex="-1">
+                        <span id="pbtn-playpause-icon" class="nplay-icon">⏸</span>
+                        <span id="pbtn-playpause-label" class="sr-only">Pausar</span>
+                    </button>
+
                     <span id="player-time-current" class="player-time-label">00:00</span>
+
                     <div id="player-seekbar-track" class="player-seekbar-track">
                         <div id="player-seekbar-buffer" class="player-seekbar-buffer" style="width: 0%;"></div>
                         <div id="player-seekbar-fill" class="player-seekbar-fill" style="width: 0%;">
                             <span class="player-seekbar-thumb"></span>
                         </div>
                     </div>
+
                     <span id="player-time-duration" class="player-time-label">00:00</span>
+                    <span class="netflix-scrub-hint">◄ -10s • OK Play/Pause • +10s ►</span>
                 </div>
 
-                <!-- Linha 3: Barra de Botões Multimídia Interativos (Navegáveis por Setas ◄ / ► e Enter) -->
-                <div id="player-controls-bar" class="player-controls-bar">
-                    <button id="pbtn-playpause" class="player-ctrl-btn player-ctrl-primary" data-action="playpause">
-                        <span id="pbtn-playpause-icon" class="pctrl-icon">⏸</span>
-                        <span id="pbtn-playpause-label" class="pctrl-label">Pausar</span>
-                    </button>
-
-                    <button id="pbtn-rew" class="player-ctrl-btn" data-action="rewind">
-                        <span class="pctrl-icon">⏪</span>
-                        <span class="pctrl-label">-15s</span>
-                    </button>
-
-                    <button id="pbtn-fwd" class="player-ctrl-btn" data-action="forward">
-                        <span class="pctrl-icon">⏩</span>
-                        <span class="pctrl-label">+15s</span>
-                    </button>
-
+                <!-- Linha 3: Opções Inferiores Estilo Netflix (Pressione ▼ para acessar: Do Início, Próx. Episódio, Legendas, Proporção da Tela, Lista) -->
+                <div id="player-controls-bar" class="player-controls-bar netflix-sub-options">
                     <button id="pbtn-restart" class="player-ctrl-btn" data-action="restart">
                         <span class="pctrl-icon">⏮</span>
                         <span class="pctrl-label">Do Início</span>
@@ -530,12 +564,12 @@
 
                     <button id="pbtn-quality" class="player-ctrl-btn" data-action="quality">
                         <span class="pctrl-icon">🎚️</span>
-                        <span id="pbtn-quality-label" class="pctrl-label">Fonte / Qualidade</span>
+                        <span id="pbtn-quality-label" class="pctrl-label">Qualidade</span>
                     </button>
 
                     <button id="pbtn-drawer" class="player-ctrl-btn" data-action="drawer">
                         <span class="pctrl-icon">📺</span>
-                        <span id="pbtn-drawer-label" class="pctrl-label">Lista</span>
+                        <span id="pbtn-drawer-label" class="pctrl-label">Canais</span>
                     </button>
                 </div>
             </div>
