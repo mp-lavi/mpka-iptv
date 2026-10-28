@@ -1,5 +1,5 @@
 {
-  "version": "2.5.0",
-  "releasedAt": "2026-10-22",
-  "changelog": "v2.5.0: Nova HUD do Player identica as fotos (flutuante sem caixa preta, botao Play branco redondo, pilulas translucidas e faixa de 5 quadros ao avancar/retroceder)"
+  "version": "2.5.1",
+  "releasedAt": "2026-10-27",
+  "changelog": "v2.5.1: Oficial Samsung QA update with Application UI Description and enhanced player certification"
 }
