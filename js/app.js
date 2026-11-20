@@ -854,10 +854,45 @@
      * BOOTSTRAP DA LISTA M3U E SEÇÕES
      * ========================================================================
      */
+    async function fetchRemotePlaylistConfig() {
+        try {
+            const bases = resolveGitHubRawCandidates(state.githubRepo || 'mp-lavi/mpka-iptv');
+            if (bases.length === 0) return null;
+            for (const base of bases) {
+                try {
+                    const res = await fetch(`${base}/playlist.json?t=${Date.now()}`, { cache: 'no-store' });
+                    if (res && res.ok) {
+                        const data = await res.json();
+                        if (data && typeof data.m3uUrl === 'string' && data.m3uUrl.trim()) {
+                            return {
+                                m3uUrl: data.m3uUrl.trim(),
+                                epgUrl: (data.epgUrl || '').trim()
+                            };
+                        }
+                    }
+                } catch (_) {}
+            }
+        } catch (_) {}
+        return null;
+    }
+
     async function bootstrapPlaylist() {
-        const savedUrl = localStorage.getItem(STORAGE_KEYS.M3U_URL) || localStorage.getItem('tizenstream_m3u_url') || 'http://ubkeqzg.biz/ss-ts/586960/jxkChq';
-        const savedEpgUrl = localStorage.getItem(STORAGE_KEYS.EPG_URL) || localStorage.getItem('tizenstream_epg_url') || '';
+        let savedUrl = localStorage.getItem(STORAGE_KEYS.M3U_URL) || localStorage.getItem('tizenstream_m3u_url') || 'http://ubkeqzg.biz/ss-ts/586960/jxkChq';
+        let savedEpgUrl = localStorage.getItem(STORAGE_KEYS.EPG_URL) || localStorage.getItem('tizenstream_epg_url') || '';
         const savedRaw = localStorage.getItem(STORAGE_KEYS.M3U_RAW) || localStorage.getItem('tizenstream_m3u_raw') || '';
+
+        // Verifica se existe URL atualizada no arquivo playlist.json do GitHub
+        const remoteCfg = await fetchRemotePlaylistConfig();
+        if (remoteCfg && remoteCfg.m3uUrl) {
+            const lastRemoteUrl = localStorage.getItem('mpka_last_remote_m3u_url') || '';
+            if (remoteCfg.m3uUrl !== lastRemoteUrl) {
+                savedUrl = remoteCfg.m3uUrl;
+                savedEpgUrl = remoteCfg.epgUrl || savedEpgUrl;
+                localStorage.setItem(STORAGE_KEYS.M3U_URL, savedUrl);
+                localStorage.setItem(STORAGE_KEYS.EPG_URL, savedEpgUrl);
+                localStorage.setItem('mpka_last_remote_m3u_url', savedUrl);
+            }
+        }
 
         dom.inputM3uUrl.value = savedUrl;
         dom.inputEpgUrl.value = savedEpgUrl;
@@ -2516,7 +2551,13 @@
     }
 
     async function handleRefreshPlaylistNow() {
-        setModalFeedback('🔄 Atualizando lista de canais IPTV e Guia EPG agora...', '');
+        setModalFeedback('🔄 Verificando playlist.json no GitHub e atualizando canais...', '');
+        const remoteCfg = await fetchRemotePlaylistConfig();
+        if (remoteCfg && remoteCfg.m3uUrl) {
+            dom.inputM3uUrl.value = remoteCfg.m3uUrl;
+            if (remoteCfg.epgUrl) dom.inputEpgUrl.value = remoteCfg.epgUrl;
+            localStorage.setItem('mpka_last_remote_m3u_url', remoteCfg.m3uUrl);
+        }
         await handleSaveM3U();
     }
 
