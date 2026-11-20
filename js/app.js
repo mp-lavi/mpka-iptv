@@ -297,8 +297,9 @@
         updateOtaSettingsUI();
         bindClickAndSearchEvents();
 
+        await bindRemoteControlEvents();
+        openProfileModal();
         await bootstrapPlaylist();
-        bindRemoteControlEvents();
 
         // Verifica atualizações silenciosamente no GitHub se Auto-Atualizar estiver ativo
         setTimeout(() => {
@@ -1351,6 +1352,23 @@
         openPlayer(channel);
     }
 
+    function getTopBarElements() {
+        const visibleTabs = dom.navTabs.filter(btn => !btn.classList.contains('hidden'));
+        const profInd = document.getElementById('profile-indicator');
+        const parBadge = dom.parentalBadge;
+        return [...visibleTabs, profInd, parBadge].filter(Boolean);
+    }
+
+    function toggleAdultContentQuick() {
+        if (state.parentalUnlocked) {
+            lockAdultSessionNow();
+        } else {
+            openPinModal('unlock', () => {
+                buildCategoriesForActiveTab(true);
+            });
+        }
+    }
+
     /**
      * Atualiza classes .focused em todas as zonas navegáveis
      */
@@ -1360,8 +1378,10 @@
 
         if (state.mode === 'topbar') {
             dom.searchInput.blur();
-            const tabBtn = dom.navTabs[state.topBarIndex] || dom.navTabs[0];
-            tabBtn.classList.add('focused');
+            const topEls = getTopBarElements();
+            state.topBarIndex = clamp(state.topBarIndex, 0, Math.max(0, topEls.length - 1));
+            const activeTop = topEls[state.topBarIndex] || topEls[0];
+            if (activeTop) activeTop.classList.add('focused');
             return;
         }
 
@@ -2790,6 +2810,16 @@
             card.addEventListener('click', () => selectActiveProfile(p.id));
             grid.appendChild(card);
         });
+
+        const addCard = document.createElement('div');
+        addCard.className = 'profile-card profile-card-add';
+        addCard.innerHTML = `
+            <div class="profile-card-avatar">＋</div>
+            <div class="profile-card-name">Criar Perfil</div>
+            <div class="profile-card-meta">Novo usuário</div>
+        `;
+        addCard.addEventListener('click', () => openProfileEditModal(null));
+        grid.appendChild(addCard);
     }
 
     function selectActiveProfile(profileId) {
@@ -3529,11 +3559,12 @@
                 return;
             }
 
-            // 6. PÍLULA DE ABAS NO TOPO
+            // 6. PÍLULA DE ABAS NO TOPO (+ PERFIL + CONTEÚDO ADULTO)
             if (state.mode === 'topbar') {
                 event.preventDefault();
-                if (isLeft) { state.topBarIndex = clamp(state.topBarIndex - 1, 0, dom.navTabs.length - 1); applyVisualFocus(); }
-                else if (isRight) { state.topBarIndex = clamp(state.topBarIndex + 1, 0, dom.navTabs.length - 1); applyVisualFocus(); }
+                const topEls = getTopBarElements();
+                if (isLeft) { state.topBarIndex = clamp(state.topBarIndex - 1, 0, Math.max(0, topEls.length - 1)); applyVisualFocus(); }
+                else if (isRight) { state.topBarIndex = clamp(state.topBarIndex + 1, 0, Math.max(0, topEls.length - 1)); applyVisualFocus(); }
                 else if (isDown || isBack) {
                     if (state.activeTab === 'search') {
                         state.mode = 'osk';
@@ -3546,14 +3577,22 @@
                     }
                     applyVisualFocus();
                 } else if (isEnter) {
-                    const chosenTab = dom.navTabs[state.topBarIndex].dataset.tab;
-                    await switchTab(chosenTab);
-                    if (chosenTab === 'search') {
-                        state.mode = 'osk';
-                        applyVisualFocus();
-                    } else if (chosenTab !== 'settings') {
-                        state.mode = 'topbar';
-                        applyVisualFocus();
+                    const activeEl = topEls[state.topBarIndex];
+                    if (!activeEl) return;
+                    if (activeEl.id === 'profile-indicator') {
+                        openProfileModal();
+                    } else if (activeEl.id === 'parental-badge') {
+                        toggleAdultContentQuick();
+                    } else if (activeEl.dataset && activeEl.dataset.tab) {
+                        const chosenTab = activeEl.dataset.tab;
+                        await switchTab(chosenTab);
+                        if (chosenTab === 'search') {
+                            state.mode = 'osk';
+                            applyVisualFocus();
+                        } else if (chosenTab !== 'settings') {
+                            state.mode = 'topbar';
+                            applyVisualFocus();
+                        }
                     }
                 }
                 return;
@@ -3754,7 +3793,7 @@
 
         const playlistInd = document.getElementById('playlist-indicator');
         if (playlistInd) playlistInd.addEventListener('click', openSettingsModal);
-        if (dom.parentalBadge) dom.parentalBadge.addEventListener('click', openSettingsModal);
+        if (dom.parentalBadge) dom.parentalBadge.addEventListener('click', toggleAdultContentQuick);
 
         // Delegação de clique nos cards do catálogo (otimizado para TV)
         if (dom.rowsWrapper) {
