@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MPKA Player — Enviar Lista para a TV</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background: #0b0d11;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            width: 100%;
+            max-width: 480px;
+            background: #141822;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            padding: 32px 26px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .brand-logo {
+            font-size: 24px;
+            font-weight: 900;
+            letter-spacing: 0.8px;
+        }
+        .brand-logo span { color: #e50914; }
+        .subtitle {
+            font-size: 14px;
+            color: #9ca3af;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            color: #d1d5db;
+            margin-bottom: 8px;
+        }
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 12px;
+            border: 1.5px solid rgba(255, 255, 255, 0.14);
+            background: #0b0e14;
+            color: #ffffff;
+            font-size: 15px;
+            margin-bottom: 18px;
+            outline: none;
+        }
+        input:focus {
+            border-color: #e50914;
+        }
+        .code-input {
+            font-size: 26px;
+            font-weight: 900;
+            letter-spacing: 8px;
+            text-align: center;
+        }
+        button {
+            width: 100%;
+            padding: 16px;
+            border-radius: 12px;
+            border: none;
+            background: #e50914;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: background 0.15s ease, transform 0.1s ease;
+        }
+        button:hover { background: #f40612; }
+        button:active { transform: scale(0.98); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .status {
+            margin-top: 16px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            display: none;
+            line-height: 1.4;
+        }
+        .status.ok {
+            display: block;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.45);
+            color: #6ee7b7;
+        }
+        .status.err {
+            display: block;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.45);
+            color: #fca5a5;
+        }
+        .tip {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #6b7280;
+            text-align: center;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="brand">
+            <div class="brand-logo">MPKA <span>Player</span></div>
+        </div>
+        <p class="subtitle">
+            Cole abaixo o código temporário exibido na sua Smart TV Samsung e o endereço da sua lista IPTV para enviar sem precisar digitar no controle remoto.
+        </p>
+
+        <form id="pair-form">
+            <label for="pair-code">1. Código Temporário da TV (6 dígitos)</label>
+            <input type="text" id="pair-code" class="code-input" maxlength="6" inputmode="numeric" placeholder="000000" required />
+
+            <label for="m3u-url">2. Endereço da Lista IPTV (M3U / M3U8 / Xtream)</label>
+            <input type="url" id="m3u-url" placeholder="http://servidor.com/get.php?username=..." required />
+
+            <label for="epg-url">3. URL do Guia EPG (Opcional)</label>
+            <input type="url" id="epg-url" placeholder="http://servidor.com/xmltv.php?..." />
+
+            <button type="submit" id="btn-send">📤 Enviar Lista para a TV</button>
+        </form>
+
+        <div id="status-box" class="status"></div>
+
+        <p class="tip">
+            Na TV, vá em <strong>Configurações &gt; Lista IPTV &amp; EPG &gt; Gerar Código Temporário</strong> para obter o código.
+        </p>
+    </div>
+
+    <script>
+        (function () {
+            const params = new URLSearchParams(window.location.search);
+            const prefillCode = (params.get('code') || '').replace(/\D/g, '').slice(0, 6);
+            const codeInput = document.getElementById('pair-code');
+            const m3uInput = document.getElementById('m3u-url');
+            const epgInput = document.getElementById('epg-url');
+            const btnSend = document.getElementById('btn-send');
+            const statusBox = document.getElementById('status-box');
+
+            if (prefillCode) codeInput.value = prefillCode;
+
+            function showStatus(msg, isOk) {
+                statusBox.textContent = msg;
+                statusBox.className = 'status ' + (isOk ? 'ok' : 'err');
+            }
+
+            document.getElementById('pair-form').addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const code = codeInput.value.replace(/\D/g, '').trim();
+                const m3uUrl = m3uInput.value.trim();
+                const epgUrl = epgInput.value.trim();
+
+                if (code.length !== 6) {
+                    showStatus('Digite os 6 dígitos do código temporário exibido na TV.', false);
+                    return;
+                }
+                if (!m3uUrl) {
+                    showStatus('Informe o endereço (URL) da lista IPTV.', false);
+                    return;
+                }
+
+                btnSend.disabled = true;
+                btnSend.textContent = '⏳ Enviando para a TV...';
+
+                try {
+                    const topic = 'mpka_pair_' + code;
+                    const res = await fetch('https://ntfy.sh/' + topic, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            m3uUrl: m3uUrl,
+                            epgUrl: epgUrl,
+                            sentAt: Date.now()
+                        })
+                    });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    showStatus('✅ Lista enviada com sucesso! Olhe para a tela da sua TV — os canais já estão sendo carregados.', true);
+                } catch (err) {
+                    showStatus('❌ Erro ao enviar (' + err.message + '). Verifique sua internet e tente novamente.', false);
+                } finally {
+                    btnSend.disabled = false;
+                    btnSend.textContent = '📤 Enviar Lista para a TV';
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

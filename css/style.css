@@ -2265,3 +2265,87 @@ html, body {
     text-decoration: line-through;
     color: #f87171;
 }
+
+
+/* ==========================================================================
+   MODAL DE PAREAMENTO POR CÓDIGO TEMPORÁRIO (ESTILO SS-IPTV)
+   ========================================================================== */
+.pair-dialog {
+    width: 780px;
+    max-width: 92vw;
+    background: #12161f;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 20px;
+    padding: 34px 40px;
+    text-align: center;
+}
+
+.pair-content-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    margin: 24px 0;
+}
+
+.pair-code-card {
+    background: #1a202d;
+    border: 2px solid var(--accent-red);
+    border-radius: 16px;
+    padding: 24px 36px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.pair-code-label {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    color: #9ca3af;
+}
+
+.pair-code-display {
+    font-size: 54px;
+    font-weight: 900;
+    letter-spacing: 10px;
+    color: #ffffff;
+}
+
+.pair-timer-text {
+    font-size: 13px;
+    color: #f59e0b;
+    font-weight: 600;
+}
+
+.pair-qr-box {
+    background: #ffffff;
+    padding: 12px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pair-qr-img {
+    width: 170px;
+    height: 170px;
+    display: block;
+}
+
+.pair-status-msg {
+    padding: 12px 18px;
+    border-radius: 10px;
+    background: rgba(59, 130, 246, 0.14);
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    color: #93c5fd;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.pair-status-msg.success {
+    background: rgba(16, 185, 129, 0.16);
+    border-color: rgba(16, 185, 129, 0.45);
+    color: #6ee7b7;
+}

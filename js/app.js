@@ -129,7 +129,12 @@
         profileModalIndex: 0,
         profileEditTargetId: null,
         profileEditFocusIndex: 0,
-        profileEditDraft: null
+        profileEditDraft: null,
+
+        // Pareamento por Código Temporário (SS-IPTV style)
+        pairModalIndex: 1,
+        pairEventSource: null,
+        pairTimerInterval: null
     };
 
     // Referências DOM
@@ -2321,6 +2326,7 @@
         }
         if (activeTabId === 'playlist') {
             return [
+                document.getElementById('btn-open-pair-modal'),
                 dom.inputM3uUrl,
                 dom.inputEpgUrl,
                 dom.inputGithubRepo,
@@ -2997,6 +3003,122 @@
 
     /**
      * ========================================================================
+     * PAREAMENTO POR CÓDIGO TEMPORÁRIO (ESTILO SS-IPTV VIA GITHUB PAGES)
+     * ========================================================================
+     */
+    function stopPairListeners() {
+        if (state.pairEventSource) {
+            try { state.pairEventSource.close(); } catch (_) {}
+            state.pairEventSource = null;
+        }
+        if (state.pairTimerInterval) {
+            clearInterval(state.pairTimerInterval);
+            state.pairTimerInterval = null;
+        }
+    }
+
+    function updatePairModalFocus() {
+        const btns = [
+            document.getElementById('btn-pair-new-code'),
+            document.getElementById('btn-pair-close')
+        ].filter(Boolean);
+        btns.forEach((b, idx) => b.classList.toggle('focused', idx === state.pairModalIndex));
+    }
+
+    function startPairSession() {
+        stopPairListeners();
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        const codeEl = document.getElementById('pair-code-display');
+        const qrImg = document.getElementById('pair-qr-img');
+        const statusEl = document.getElementById('pair-status-msg');
+        const timerEl = document.getElementById('pair-timer-text');
+
+        if (codeEl) codeEl.textContent = code;
+        const pairUrl = `https://mp-lavi.github.io/mpka-iptv/pair.html?code=${code}`;
+        if (qrImg) {
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pairUrl)}`;
+        }
+        if (statusEl) {
+            statusEl.textContent = '⏳ Aguardando você enviar a lista pelo site...';
+            statusEl.className = 'pair-status-msg';
+        }
+
+        let remaining = 300;
+        if (timerEl) timerEl.textContent = 'Expira em 05:00';
+        state.pairTimerInterval = setInterval(() => {
+            remaining--;
+            if (remaining <= 0) {
+                stopPairListeners();
+                if (timerEl) timerEl.textContent = 'Código expirado — clique em Gerar Novo Código';
+                return;
+            }
+            const m = String(Math.floor(remaining / 60)).padStart(2, '0');
+            const s = String(remaining % 60).padStart(2, '0');
+            if (timerEl) timerEl.textContent = `Expira em ${m}:${s}`;
+        }, 1000);
+
+        try {
+            const es = new EventSource(`https://ntfy.sh/mpka_pair_${code}/sse`);
+            state.pairEventSource = es;
+            es.addEventListener('message', (evt) => {
+                try {
+                    const envelope = JSON.parse(evt.data);
+                    if (!envelope || !envelope.message) return;
+                    const payload = JSON.parse(envelope.message);
+                    if (payload && payload.m3uUrl) {
+                        stopPairListeners();
+                        if (dom.inputM3uUrl) dom.inputM3uUrl.value = payload.m3uUrl.trim();
+                        if (dom.inputEpgUrl && payload.epgUrl) dom.inputEpgUrl.value = payload.epgUrl.trim();
+                        if (statusEl) {
+                            statusEl.textContent = '✅ Lista recebida! Carregando canais na TV...';
+                            statusEl.className = 'pair-status-msg success';
+                        }
+                        setTimeout(() => {
+                            closePairModal(false);
+                            handleSaveM3U();
+                        }, 800);
+                    }
+                } catch (_) {}
+            });
+        } catch (err) {
+            if (statusEl) statusEl.textContent = '❌ Erro ao abrir canal de pareamento. Verifique sua internet.';
+        }
+    }
+
+    function openPairModal() {
+        if (dom.settingsModal && !dom.settingsModal.classList.contains('hidden')) {
+            dom.settingsModal.classList.add('hidden');
+        }
+        state.mode = 'pair_modal';
+        state.pairModalIndex = 1;
+        const modal = document.getElementById('pair-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+        startPairSession();
+        updatePairModalFocus();
+    }
+
+    function closePairModal(reopenSettings = true) {
+        stopPairListeners();
+        const modal = document.getElementById('pair-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+        }
+        if (reopenSettings) {
+            if (dom.settingsModal) dom.settingsModal.classList.remove('hidden');
+            state.mode = 'modal';
+            applyVisualFocus();
+        } else {
+            if (dom.settingsModal) dom.settingsModal.classList.remove('hidden');
+            state.mode = 'modal';
+        }
+    }
+
+    /**
+     * ========================================================================
      * NAVEGAÇÃO POR CONTROLE REMOTO (D-PAD COMPLETO EM TODAS AS ZONAS)
      * ========================================================================
      */
@@ -3013,6 +3135,26 @@
             const isBack = key === 'Escape' || key === 'XF86Back' || keyCode === KEYS.ESC || keyCode === KEYS.TIZEN_RETURN;
             const isChUp = keyCode === KEYS.CH_UP;
             const isChDown = keyCode === KEYS.CH_DOWN;
+
+            // 0C. MODAL DE PAREAMENTO POR CÓDIGO TEMPORÁRIO
+            if (state.mode === 'pair_modal') {
+                event.preventDefault();
+                if (isBack) {
+                    closePairModal(true);
+                    return;
+                }
+                if (isLeft && state.pairModalIndex > 0) {
+                    state.pairModalIndex = 0;
+                    updatePairModalFocus();
+                } else if (isRight && state.pairModalIndex < 1) {
+                    state.pairModalIndex = 1;
+                    updatePairModalFocus();
+                } else if (isEnter) {
+                    if (state.pairModalIndex === 0) startPairSession();
+                    else closePairModal(true);
+                }
+                return;
+            }
 
             // 0A. MODAL SELETOR DE PERFIS DE USUÁRIO
             if (state.mode === 'profile_modal') {
@@ -3672,6 +3814,16 @@
 
         const btnPDelete = document.getElementById('btn-profile-delete');
         if (btnPDelete) btnPDelete.addEventListener('click', deleteEditingProfile);
+
+        // Eventos do Pareamento por Código Temporário
+        const btnOpenPair = document.getElementById('btn-open-pair-modal');
+        if (btnOpenPair) btnOpenPair.addEventListener('click', openPairModal);
+
+        const btnPairNew = document.getElementById('btn-pair-new-code');
+        if (btnPairNew) btnPairNew.addEventListener('click', startPairSession);
+
+        const btnPairClose = document.getElementById('btn-pair-close');
+        if (btnPairClose) btnPairClose.addEventListener('click', () => closePairModal(true));
 
         dom.pinKeys.forEach((keyBtn, idx) => {
             keyBtn.addEventListener('click', () => {
