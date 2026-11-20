@@ -3524,6 +3524,7 @@
                     else if (activeCtrl === dom.btnLockAdultNow) { event.preventDefault(); lockAdultSessionNow(); }
                     else if (activeCtrl === dom.btnSaveM3u) { event.preventDefault(); await handleSaveM3U(); }
                     else if (activeCtrl === dom.btnCloseModal) { event.preventDefault(); closeSettingsModal(); }
+                    else if (activeCtrl && !isTextInput) { event.preventDefault(); activeCtrl.click(); }
                 }
                 return;
             }
