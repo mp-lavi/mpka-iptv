@@ -20,7 +20,7 @@
             <div class="brand">
                 <img src="icon.png" alt="MPKA Iptv" class="brand-icon-img" onerror="this.style.display='none'">
                 <span class="brand-logo">MPKA <span class="brand-accent">Iptv</span></span>
-                <span id="top-version-pill" class="top-version-pill">v2.5.1</span>
+                <span id="top-version-pill" class="top-version-pill">v2.6.0</span>
             </div>
 
             <!-- Pílula Central de Navegação (Home | Ao Vivo | Filmes | Séries | Buscar | Lista & PIN) -->
@@ -74,6 +74,11 @@
             </nav>
 
             <div class="top-right-status">
+                <div id="profile-indicator" class="profile-indicator" title="Trocar ou Configurar Perfil de Usuário">
+                    <span id="profile-avatar-badge" class="profile-avatar-badge">👑</span>
+                    <span id="profile-active-name">Principal</span>
+                </div>
+
                 <div id="parental-badge" class="parental-badge" title="Status do Controle Parental (+18)">
                     <span id="parental-icon">🔒</span>
                     <span id="parental-status-text">+18 Bloqueado</span>
@@ -233,7 +238,7 @@
                     <p class="modal-subtitle">Use <strong>◄ / ►</strong> para trocar de aba e <strong>▲ / ▼</strong> + <strong>OK</strong> para selecionar os botões.</p>
                 </div>
                 <div class="settings-version-badges">
-                    <span id="settings-version-badge" class="modal-badge">Versão v2.5.1</span>
+                    <span id="settings-version-badge" class="modal-badge">Versão v2.6.0</span>
                     <span id="settings-ota-badge" class="modal-badge badge-ota">GitHub OTA Ativo</span>
                 </div>
             </div>
@@ -243,6 +248,7 @@
                 <button class="settings-tab-btn active" data-stab="update">🚀 1. Atualização & Rápido</button>
                 <button class="settings-tab-btn" data-stab="playlist">📺 2. Lista IPTV & EPG</button>
                 <button class="settings-tab-btn" data-stab="parental">🔞 3. Controle Parental (+18)</button>
+                <button class="settings-tab-btn" data-stab="profiles">👤 4. Perfis de Usuário</button>
             </div>
 
             <!-- ABA 1: ATUALIZAÇÃO GITHUB & AÇÕES RÁPIDAS (Botões grandes verticais) -->
@@ -372,14 +378,103 @@
                 </button>
             </div>
 
+            <!-- ABA 4: PERFIS DE USUÁRIO (Criar, Trocar e Restringir Conteúdos por Perfil) -->
+            <div id="stab-panel-profiles" class="settings-tab-panel hidden">
+                <button id="btn-open-profiles-modal" class="settings-big-btn settings-big-btn-primary">
+                    <span class="sbtn-left">
+                        <span class="sbtn-icon">👥</span>
+                        <span class="sbtn-texts">
+                            <strong>Trocar ou Gerenciar Perfis de Usuário</strong>
+                            <small>Escolha um perfil ativo ou edite quais seções e categorias cada usuário pode assistir</small>
+                        </span>
+                    </span>
+                    <span class="sbtn-badge">ABRIR PERFIS</span>
+                </button>
+
+                <button id="btn-create-new-profile-quick" class="settings-big-btn">
+                    <span class="sbtn-left">
+                        <span class="sbtn-icon">➕</span>
+                        <span class="sbtn-texts">
+                            <strong>Criar Novo Perfil de Usuário</strong>
+                            <small>Crie perfis (ex: Kids, Pai, Sala) habilitando ou bloqueando Ao Vivo, Filmes, Séries ou categorias</small>
+                        </span>
+                    </span>
+                    <span class="sbtn-badge">NOVO PERFIL</span>
+                </button>
+            </div>
+
             <div id="modal-feedback" class="modal-feedback">
-                Use ▲ / ▼ para escolher uma opção e pressione OK. Use ◄ / ► para alternar entre as 3 abas acima.
+                Use ▲ / ▼ para escolher uma opção e pressione OK. Use ◄ / ► para alternar entre as 4 abas acima.
             </div>
 
             <div class="modal-actions">
                 <button id="btn-close-modal" class="modal-btn modal-btn-ghost">
                     ✖ Fechar Configurações (Tecla Voltar)
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL SELETOR DE PERFIS DE USUÁRIO -->
+    <div id="profile-modal" class="modal-backdrop hidden" aria-hidden="true">
+        <div class="profile-dialog">
+            <span class="epg-modal-kicker">PERFIS DE USUÁRIO — MPKA IPTV</span>
+            <h2 class="modal-title" style="margin-top: 6px;">Quem está assistindo?</h2>
+            <p class="modal-subtitle">Use <strong>◄ / ►</strong> para escolher o perfil e pressione <strong>OK</strong> para ativar. Você também pode editar as permissões de conteúdo de cada perfil.</p>
+
+            <div id="profile-grid" class="profile-grid">
+                <!-- Preenchido dinamicamente por js/app.js -->
+            </div>
+
+            <div class="profile-modal-actions">
+                <button id="btn-profile-new" class="modal-btn modal-btn-primary">➕ Criar Novo Perfil</button>
+                <button id="btn-profile-edit-active" class="modal-btn modal-btn-secondary">⚙️ Editar / Restringir Conteúdo</button>
+                <button id="btn-profile-close" class="modal-btn modal-btn-ghost">Fechar (Voltar / ESC)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDITOR DE PERFIL E PERMISSÕES DE CONTEÚDO -->
+    <div id="profile-edit-modal" class="modal-backdrop hidden" aria-hidden="true">
+        <div class="profile-edit-dialog">
+            <div class="modal-header" style="margin-bottom: 14px;">
+                <div>
+                    <h2 id="profile-edit-title" class="modal-title">👤 Configurar Perfil</h2>
+                    <p class="modal-subtitle">Habilite ou desabilite seções inteiras e categorias específicas para este usuário.</p>
+                </div>
+            </div>
+
+            <label class="field-label" for="input-profile-name">Nome do Perfil</label>
+            <input type="text" id="input-profile-name" class="modal-input" placeholder="Ex: Kids, Pai, Visitante..." maxlength="20" autocomplete="off" />
+
+            <div class="profile-edit-row">
+                <button id="ptog-live" class="profile-toggle-btn" data-perm="allowLive">
+                    <span>📺 Canais Ao Vivo</span>
+                    <span class="profile-toggle-pill" id="ptog-live-pill">HABILITADO</span>
+                </button>
+                <button id="ptog-movies" class="profile-toggle-btn" data-perm="allowMovies">
+                    <span>🎬 Filmes (VOD)</span>
+                    <span class="profile-toggle-pill" id="ptog-movies-pill">HABILITADO</span>
+                </button>
+                <button id="ptog-series" class="profile-toggle-btn" data-perm="allowSeries">
+                    <span>🎞️ Séries & Novelas</span>
+                    <span class="profile-toggle-pill" id="ptog-series-pill">HABILITADO</span>
+                </button>
+                <button id="ptog-adult" class="profile-toggle-btn" data-perm="allowAdult">
+                    <span>🔞 Conteúdo Adulto (+18)</span>
+                    <span class="profile-toggle-pill" id="ptog-adult-pill">PERMITIDO</span>
+                </button>
+            </div>
+
+            <label class="field-label">Categorias Específicas (Pressione OK para Habilitar / Desabilitar uma categoria)</label>
+            <div id="profile-cats-box" class="profile-cats-box">
+                <!-- Preenchido dinamicamente por js/app.js -->
+            </div>
+
+            <div class="profile-modal-actions" style="justify-content: flex-end;">
+                <button id="btn-profile-delete" class="modal-btn modal-btn-ghost" style="color: #f87171;">🗑️ Excluir Perfil</button>
+                <button id="btn-profile-cancel" class="modal-btn modal-btn-ghost">Cancelar</button>
+                <button id="btn-profile-save" class="modal-btn modal-btn-primary">💾 Salvar Perfil</button>
             </div>
         </div>
     </div>

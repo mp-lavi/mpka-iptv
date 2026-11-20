@@ -1,5 +1,5 @@
 {
-  "version": "2.5.1",
-  "releasedAt": "2026-10-27",
-  "changelog": "v2.5.1: Oficial Samsung QA update with Application UI Description and enhanced player certification"
+  "version": "2.6.0",
+  "releasedAt": "2026-11-19",
+  "changelog": "v2.6.0: Perfis de usuario com controle individual de conteudo (Ao Vivo, Filmes, Series, +18 e categorias), interface mais leve e otimizada para Tizen TV, e adequacoes para loja oficial Samsung."
 }

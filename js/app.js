@@ -23,7 +23,9 @@
         PLAYBACK_POSITIONS: 'mpkaiptv_playback_positions', // { [streamUrl]: { time, duration, pct, updatedAt } }
         GITHUB_REPO: 'mpka_github_repo_v1',
         OTA_AUTO: 'mpka_ota_auto_v1',
-        OTA_BUNDLE: 'mpka_ota_bundle_v1'
+        OTA_BUNDLE: 'mpka_ota_bundle_v1',
+        PROFILES: 'mpka_profiles_v1',
+        ACTIVE_PROFILE_ID: 'mpka_active_profile_v1'
     };
 
     const KEYS = {
@@ -52,6 +54,7 @@
     ];
 
     const MAX_CARDS_PER_ROW = 40;
+    const INITIAL_CARDS_PER_ROW = 16;
     const OSK_KEYS = [
         'A','B','C','D','E','F','G','H','I','J','K','L','M',
         'N','O','P','Q','R','S','T','U','V','W','X','Y','Z',
@@ -118,7 +121,15 @@
         // Auto-Atualização GitHub OTA & Abas de Configurações
         githubRepo: 'mp-lavi/mpka-iptv',
         otaAutoEnabled: true,
-        settingsTabIdx: 0 // 0 = 'update', 1 = 'playlist', 2 = 'parental'
+        settingsTabIdx: 0, // 0 = 'update', 1 = 'playlist', 2 = 'parental', 3 = 'profiles'
+
+        // Perfis de Usuário
+        profiles: [],
+        activeProfileId: 'admin',
+        profileModalIndex: 0,
+        profileEditTargetId: null,
+        profileEditFocusIndex: 0,
+        profileEditDraft: null
     };
 
     // Referências DOM
@@ -274,6 +285,8 @@
         registerTizenKeys();
         startClock();
         loadPersistedUserData();
+        loadProfiles();
+        applyActiveProfileToUI();
         renderOnScreenKeyboard();
         updateParentalStatusUI();
         updateOtaSettingsUI();
@@ -981,16 +994,31 @@
         buildCategoriesForActiveTab(false);
     }
 
+    function isItemAllowedByProfile(item) {
+        if (!item) return false;
+        const p = getActiveProfile();
+        if (!p) return true;
+        if (item.section === 'live' && p.allowLive === false) return false;
+        if (item.section === 'movies' && p.allowMovies === false) return false;
+        if (item.section === 'series' && p.allowSeries === false) return false;
+        const isAdultItem = Boolean(item.isAdult) || M3UParser.isAdultContent(item.name, item.group);
+        if (isAdultItem && p.allowAdult === false) return false;
+        const gName = item.group || 'Geral';
+        if (Array.isArray(p.blockedCategories) && p.blockedCategories.includes(gName)) return false;
+        return true;
+    }
+
     function buildCategoriesForActiveTab(preserveFocus = false) {
         const categories = [];
         const tab = state.activeTab;
+        const p = getActiveProfile();
 
         if (tab === 'home') {
-            const safeHistory = state.history.filter(h => !isChannelLockedByParental(h));
+            const safeHistory = state.history.filter(h => isItemAllowedByProfile(h) && !isChannelLockedByParental(h));
             const fallbackHome = [
-                ...state.sectionCache.movies.filter(m => !isChannelLockedByParental(m)).slice(0, 6),
-                ...state.sectionCache.live.filter(l => !isChannelLockedByParental(l)).slice(0, 6),
-                ...state.sectionCache.series.filter(s => !isChannelLockedByParental(s)).slice(0, 4)
+                ...(p.allowMovies !== false ? state.sectionCache.movies.filter(m => isItemAllowedByProfile(m) && !isChannelLockedByParental(m)).slice(0, 6) : []),
+                ...(p.allowLive !== false ? state.sectionCache.live.filter(l => isItemAllowedByProfile(l) && !isChannelLockedByParental(l)).slice(0, 6) : []),
+                ...(p.allowSeries !== false ? state.sectionCache.series.filter(s => isItemAllowedByProfile(s) && !isChannelLockedByParental(s)).slice(0, 4) : [])
             ].slice(0, 12);
 
             const continueItems = safeHistory.length > 0 ? safeHistory : fallbackHome;
@@ -1002,15 +1030,16 @@
                 });
             }
 
-            if (state.favorites.length > 0) {
+            const allowedFavs = state.favorites.filter(f => isItemAllowedByProfile(f));
+            if (allowedFavs.length > 0) {
                 categories.push({
                     kicker: 'SUA LISTA',
                     title: 'Meus Favoritos',
-                    items: state.favorites
+                    items: allowedFavs
                 });
             }
 
-            if (state.sectionCache.movies.length > 0) {
+            if (p.allowMovies !== false && state.sectionCache.movies.length > 0) {
                 groupItemsByCategory(state.sectionCache.movies, 3).forEach(g => categories.push({
                     kicker: 'CINEMA EM CASA',
                     title: g.title,
@@ -1018,7 +1047,7 @@
                 }));
             }
 
-            if (state.sectionCache.live.length > 0) {
+            if (p.allowLive !== false && state.sectionCache.live.length > 0) {
                 groupItemsByCategory(state.sectionCache.live, 4).forEach(g => categories.push({
                     kicker: 'TV AO VIVO',
                     title: g.title,
@@ -1026,26 +1055,26 @@
                 }));
             }
 
-            if (state.sectionCache.series.length > 0) {
+            if (p.allowSeries !== false && state.sectionCache.series.length > 0) {
                 groupItemsByCategory(state.sectionCache.series, 3).forEach(g => categories.push({
                     kicker: 'MARATONAR',
                     title: g.title,
                     items: g.items
                 }));
             }
-        } else if (tab === 'live') {
+        } else if (tab === 'live' && p.allowLive !== false) {
             groupItemsByCategory(state.sectionCache.live, 65).forEach(g => categories.push({
                 kicker: 'TRANSMISSÃO AO VIVO',
                 title: g.title,
                 items: g.items
             }));
-        } else if (tab === 'movies') {
+        } else if (tab === 'movies' && p.allowMovies !== false) {
             groupItemsByCategory(state.sectionCache.movies, 65).forEach(g => categories.push({
                 kicker: 'CATÁLOGO DE FILMES',
                 title: g.title,
                 items: g.items
             }));
-        } else if (tab === 'series') {
+        } else if (tab === 'series' && p.allowSeries !== false) {
             groupItemsByCategory(state.sectionCache.series, 65).forEach(g => categories.push({
                 kicker: 'SÉRIES & NOVELAS',
                 title: g.title,
@@ -1053,10 +1082,10 @@
             }));
         } else if (tab === 'search') {
             const allItems = [
-                ...state.sectionCache.movies,
-                ...state.sectionCache.live,
-                ...state.sectionCache.series
-            ];
+                ...(p.allowMovies !== false ? state.sectionCache.movies : []),
+                ...(p.allowLive !== false ? state.sectionCache.live : []),
+                ...(p.allowSeries !== false ? state.sectionCache.series : [])
+            ].filter(isItemAllowedByProfile);
             const q = state.searchQuery.trim().toLowerCase();
             const filtered = q
                 ? allItems.filter(it =>
@@ -1093,6 +1122,7 @@
         const map = new Map();
         for (let i = 0; i < items.length; i++) {
             const ch = items[i];
+            if (!isItemAllowedByProfile(ch)) continue;
             const gName = ch.group || 'Geral';
             if (!map.has(gName)) map.set(gName, []);
             const arr = map.get(gName);
@@ -1118,17 +1148,110 @@
     /**
      * Renderiza as fileiras e cards com barra real de tempo assistido, EPG atual e número de qualidades/episódios
      */
+    function createCardElement(channel, rIndex, cIndex) {
+        const isLiveCard = channel.section === 'live';
+        const locked = isChannelLockedByParental(channel);
+
+        const cardEl = document.createElement('article');
+        cardEl.className = `channel-card ${isLiveCard ? 'card-live' : 'card-poster'} ${locked ? 'adult-locked' : ''}`;
+        cardEl.id = `card-${rIndex}-${cIndex}`;
+        cardEl.dataset.rowIndex = rIndex;
+        cardEl.dataset.colIndex = cIndex;
+
+        const favStarHtml = isFavorite(channel) ? '<span class="card-fav-star">★</span>' : '<span class="card-fav-star"></span>';
+        const initials = getInitials(channel.name);
+        const isAdultItem = Boolean(channel.isAdult) || M3UParser.isAdultContent(channel.name, channel.group);
+
+        let sectionTag = 'AO VIVO';
+        if (isAdultItem) {
+            sectionTag = '🔞 +18';
+        } else if (channel.isSeriesGroup || channel.section === 'series') {
+            const sCount = channel.seasons ? Object.keys(channel.seasons).length : 0;
+            sectionTag = sCount > 0 ? `SÉRIE • ${sCount}T` : 'SÉRIE';
+        } else if (channel.section === 'movies') {
+            sectionTag = 'FILME';
+        } else if (channel.variants && channel.variants.length > 1) {
+            sectionTag = `${channel.variants.length} FONTES`;
+        }
+
+        let epgSubHtml = '';
+        const savedPos = getSavedProgress(channel);
+        let progressPercent = savedPos ? savedPos.pct : (((cIndex * 19 + 25) % 70) + 12);
+
+        if (isLiveCard && !locked) {
+            const epg = M3UParser.getChannelEPG(channel, state.epgData);
+            if (epg && epg.now) {
+                epgSubHtml = `<div class="card-epg-subtitle">Agora: ${escapeHtml(epg.now.title)}</div>`;
+                progressPercent = epg.now.progress || progressPercent;
+            }
+        } else if (savedPos && savedPos.time > 10 && !locked) {
+            epgSubHtml = `<div class="card-epg-subtitle">Parou em ${formatSecondsToClock(savedPos.time)}</div>`;
+        }
+
+        const lockOverlayHtml = locked
+            ? `<div class="card-lock-overlay">
+                   <span class="lock-big-icon">🔒</span>
+                   <span>CONTEÚDO +18</span>
+               </div>`
+            : '';
+
+        const mediaHtml = channel.logo
+            ? `<img class="card-poster-img" loading="lazy" src="${escapeHtml(channel.logo)}" alt="${escapeHtml(channel.name)}"
+                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+               <div class="card-fallback-art" style="display:none;">
+                   <div class="card-Avatar">${initials}</div>
+               </div>`
+            : `<div class="card-fallback-art">
+                   <div class="card-Avatar">${initials}</div>
+               </div>`;
+
+        const displayTitle = locked ? 'Conteúdo Protegido (+18)' : channel.name;
+
+        cardEl.innerHTML = `
+            <div class="card-top-badges">
+                <span class="card-pill-tag ${isAdultItem ? 'tag-adult' : ''}">${sectionTag}</span>
+                ${favStarHtml}
+            </div>
+            ${mediaHtml}
+            ${lockOverlayHtml}
+            <div class="card-footer-bar">
+                <div class="card-progress-track">
+                    <div class="card-progress-fill" style="width: ${progressPercent}%;"></div>
+                </div>
+                <div class="card-title">${escapeHtml(displayTitle)}</div>
+                ${epgSubHtml}
+            </div>
+        `;
+        return cardEl;
+    }
+
+    function ensureRowCardsRendered(rIndex, targetCol) {
+        const cat = state.categories[rIndex];
+        const trackEl = document.getElementById(`row-track-${rIndex}`);
+        if (!cat || !trackEl) return;
+        const already = trackEl.children.length;
+        if (targetCol + 4 < already || already >= cat.items.length) return;
+        const end = Math.min(cat.items.length, Math.max(already + 12, targetCol + 6));
+        const frag = document.createDocumentFragment();
+        for (let cIndex = already; cIndex < end; cIndex++) {
+            frag.appendChild(createCardElement(cat.items[cIndex], rIndex, cIndex));
+        }
+        trackEl.appendChild(frag);
+    }
+
     function renderCatalogRows() {
         dom.rowsWrapper.innerHTML = '';
 
         if (state.categories.length === 0) {
             dom.rowsWrapper.innerHTML = `
                 <div style="padding: 40px 56px; color: #9ca3af; font-size: 18px;">
-                    Nenhum item encontrado nesta seção. Pressione ▲ para navegar no menu superior.
+                    Nenhum item encontrado nesta seção ou perfil. Pressione ▲ para navegar no menu superior ou trocar de perfil.
                 </div>
             `;
             return;
         }
+
+        const frag = document.createDocumentFragment();
 
         state.categories.forEach((cat, rIndex) => {
             const rowEl = document.createElement('section');
@@ -1158,96 +1281,18 @@
             trackEl.className = 'row-track';
             trackEl.id = `row-track-${rIndex}`;
 
-            cat.items.forEach((channel, cIndex) => {
-                const isLiveCard = channel.section === 'live';
-                const locked = isChannelLockedByParental(channel);
-
-                const cardEl = document.createElement('article');
-                cardEl.className = `channel-card ${isLiveCard ? 'card-live' : 'card-poster'} ${locked ? 'adult-locked' : ''}`;
-                cardEl.id = `card-${rIndex}-${cIndex}`;
-
-                const favStarHtml = isFavorite(channel) ? '<span class="card-fav-star">★</span>' : '<span class="card-fav-star"></span>';
-                const initials = getInitials(channel.name);
-                const isAdultItem = Boolean(channel.isAdult) || M3UParser.isAdultContent(channel.name, channel.group);
-
-                let sectionTag = 'AO VIVO';
-                if (isAdultItem) {
-                    sectionTag = '🔞 +18';
-                } else if (channel.isSeriesGroup || channel.section === 'series') {
-                    const sCount = channel.seasons ? Object.keys(channel.seasons).length : 0;
-                    sectionTag = sCount > 0 ? `SÉRIE • ${sCount}T` : 'SÉRIE';
-                } else if (channel.section === 'movies') {
-                    sectionTag = 'FILME';
-                } else if (channel.variants && channel.variants.length > 1) {
-                    sectionTag = `${channel.variants.length} FONTES`;
-                }
-
-                // Progresso real salvo no localStorage ou progresso EPG ao vivo
-                let epgSubHtml = '';
-                const savedPos = getSavedProgress(channel);
-                let progressPercent = savedPos ? savedPos.pct : (((cIndex * 19 + 25) % 70) + 12);
-
-                if (isLiveCard && !locked) {
-                    const epg = M3UParser.getChannelEPG(channel, state.epgData);
-                    if (epg && epg.now) {
-                        epgSubHtml = `<div class="card-epg-subtitle">Agora: ${escapeHtml(epg.now.title)}</div>`;
-                        progressPercent = epg.now.progress || progressPercent;
-                    }
-                } else if (savedPos && savedPos.time > 10 && !locked) {
-                    epgSubHtml = `<div class="card-epg-subtitle">Parou em ${formatSecondsToClock(savedPos.time)}</div>`;
-                }
-
-                const lockOverlayHtml = locked
-                    ? `<div class="card-lock-overlay">
-                           <span class="lock-big-icon">🔒</span>
-                           <span>CONTEÚDO +18</span>
-                       </div>`
-                    : '';
-
-                const mediaHtml = channel.logo
-                    ? `<img class="card-poster-img" loading="lazy" src="${escapeHtml(channel.logo)}" alt="${escapeHtml(channel.name)}"
-                            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                       <div class="card-fallback-art" style="display:none;">
-                           <div class="card-Avatar">${initials}</div>
-                       </div>`
-                    : `<div class="card-fallback-art">
-                           <div class="card-Avatar">${initials}</div>
-                       </div>`;
-
-                const displayTitle = locked ? 'Conteúdo Protegido (+18)' : channel.name;
-
-                cardEl.innerHTML = `
-                    <div class="card-top-badges">
-                        <span class="card-pill-tag ${isAdultItem ? 'tag-adult' : ''}">${sectionTag}</span>
-                        ${favStarHtml}
-                    </div>
-                    ${mediaHtml}
-                    ${lockOverlayHtml}
-                    <div class="card-footer-bar">
-                        <div class="card-progress-track">
-                            <div class="card-progress-fill" style="width: ${progressPercent}%;"></div>
-                        </div>
-                        <div class="card-title">${escapeHtml(displayTitle)}</div>
-                        ${epgSubHtml}
-                    </div>
-                `;
-
-                cardEl.addEventListener('click', () => {
-                    state.mode = 'catalog';
-                    state.rowIndex = rIndex;
-                    state.colIndices[rIndex] = cIndex;
-                    applyVisualFocus();
-                    activateSelectedChannelOrShow(channel);
-                });
-
-                trackEl.appendChild(cardEl);
-            });
+            const initialCount = Math.min(cat.items.length, INITIAL_CARDS_PER_ROW);
+            for (let cIndex = 0; cIndex < initialCount; cIndex++) {
+                trackEl.appendChild(createCardElement(cat.items[cIndex], rIndex, cIndex));
+            }
 
             viewportEl.appendChild(trackEl);
             rowEl.appendChild(headerEl);
             rowEl.appendChild(viewportEl);
-            dom.rowsWrapper.appendChild(rowEl);
+            frag.appendChild(rowEl);
         });
+
+        dom.rowsWrapper.appendChild(frag);
     }
 
     /**
@@ -2209,7 +2254,7 @@
      * CENTRAL DE CONFIGURAÇÕES POR ABAS SIMPLES (100% VERTICAL ▲/▼ + ABAS ◄/►)
      * ========================================================================
      */
-    const SETTINGS_TABS = ['update', 'playlist', 'parental'];
+    const SETTINGS_TABS = ['update', 'playlist', 'parental', 'profiles'];
 
     function switchSettingsTab(tabIdx) {
         state.settingsTabIdx = clamp(tabIdx, 0, SETTINGS_TABS.length - 1);
@@ -2246,6 +2291,13 @@
                 dom.inputGithubRepo,
                 dom.btnSaveM3u,
                 dom.btnRestoreDefault,
+                dom.btnCloseModal
+            ].filter(Boolean);
+        }
+        if (activeTabId === 'profiles') {
+            return [
+                document.getElementById('btn-open-profiles-modal'),
+                document.getElementById('btn-create-new-profile-quick'),
                 dom.btnCloseModal
             ].filter(Boolean);
         }
@@ -2570,6 +2622,340 @@
 
     /**
      * ========================================================================
+     * PERFIS DE USUÁRIO (CRIAR, EDITAR E RESTRINGIR CONTEÚDOS POR PERFIL)
+     * ========================================================================
+     */
+    const PROFILE_AVATARS = ['👑', '🎬', '📺', '🧒', '⭐', '🎮', '⚽', '🍿'];
+    const PROFILE_COLORS = ['#e50914', '#2563eb', '#059669', '#d97706', '#7c3aed', '#db2777'];
+
+    function loadProfiles() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEYS.PROFILES);
+            const parsed = raw ? JSON.parse(raw) : null;
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                state.profiles = parsed;
+            } else {
+                state.profiles = [{
+                    id: 'admin',
+                    name: 'Principal',
+                    avatar: '👑',
+                    color: '#e50914',
+                    isAdmin: true,
+                    allowLive: true,
+                    allowMovies: true,
+                    allowSeries: true,
+                    allowAdult: true,
+                    blockedCategories: []
+                }];
+            }
+            const savedId = localStorage.getItem(STORAGE_KEYS.ACTIVE_PROFILE_ID);
+            state.activeProfileId = state.profiles.some(p => p.id === savedId) ? savedId : state.profiles[0].id;
+        } catch (e) {
+            state.profiles = [{
+                id: 'admin', name: 'Principal', avatar: '👑', color: '#e50914',
+                isAdmin: true, allowLive: true, allowMovies: true, allowSeries: true, allowAdult: true, blockedCategories: []
+            }];
+            state.activeProfileId = 'admin';
+        }
+    }
+
+    function getActiveProfile() {
+        return state.profiles.find(p => p.id === state.activeProfileId) || state.profiles[0];
+    }
+
+    function saveProfiles() {
+        try {
+            localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(state.profiles));
+            localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE_ID, state.activeProfileId);
+        } catch (_) {}
+    }
+
+    function applyActiveProfileToUI() {
+        const p = getActiveProfile();
+        if (!p) return;
+        const badge = document.getElementById('profile-avatar-badge');
+        const nameEl = document.getElementById('profile-active-name');
+        if (badge) {
+            badge.textContent = p.avatar || '👤';
+            badge.style.background = p.color || '#e50914';
+        }
+        if (nameEl) nameEl.textContent = p.name || 'Perfil';
+
+        dom.navTabs.forEach(btn => {
+            const t = btn.dataset.tab;
+            let visible = true;
+            if (t === 'live' && p.allowLive === false) visible = false;
+            if (t === 'movies' && p.allowMovies === false) visible = false;
+            if (t === 'series' && p.allowSeries === false) visible = false;
+            btn.classList.toggle('hidden', !visible);
+        });
+
+        if ((state.activeTab === 'live' && p.allowLive === false) ||
+            (state.activeTab === 'movies' && p.allowMovies === false) ||
+            (state.activeTab === 'series' && p.allowSeries === false)) {
+            state.activeTab = 'home';
+        }
+    }
+
+    function getAllAvailableCategoryNames() {
+        const set = new Set();
+        ['movies', 'live', 'series'].forEach(sec => {
+            (state.sectionCache[sec] || []).forEach(item => {
+                set.add(item.group || 'Geral');
+            });
+        });
+        return Array.from(set).sort((a, b) => a.localeCompare(b));
+    }
+
+    function getProfileModalControls() {
+        const cards = Array.from(document.querySelectorAll('#profile-grid .profile-card'));
+        const actions = [
+            document.getElementById('btn-profile-new'),
+            document.getElementById('btn-profile-edit-active'),
+            document.getElementById('btn-profile-close')
+        ].filter(Boolean);
+        return [...cards, ...actions];
+    }
+
+    function renderProfileModal() {
+        const grid = document.getElementById('profile-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        state.profiles.forEach(p => {
+            const card = document.createElement('div');
+            const isActive = p.id === state.activeProfileId;
+            card.className = `profile-card ${isActive ? 'active-profile' : ''}`;
+            card.dataset.profileId = p.id;
+
+            const perms = [];
+            if (p.allowLive !== false) perms.push('TV');
+            if (p.allowMovies !== false) perms.push('Filmes');
+            if (p.allowSeries !== false) perms.push('Séries');
+            const blockedCount = (p.blockedCategories || []).length;
+            const metaText = `${perms.join(' • ') || 'Restrito'}${blockedCount > 0 ? ` (${blockedCount} bloq.)` : ''}`;
+
+            card.innerHTML = `
+                <div class="profile-card-avatar" style="background: ${escapeHtml(p.color || '#e50914')};">${escapeHtml(p.avatar || '👤')}</div>
+                <div class="profile-card-name">${escapeHtml(p.name)}</div>
+                <div class="profile-card-meta">${isActive ? '✓ Ativo • ' : ''}${escapeHtml(metaText)}</div>
+            `;
+            card.addEventListener('click', () => selectActiveProfile(p.id));
+            grid.appendChild(card);
+        });
+    }
+
+    function selectActiveProfile(profileId) {
+        state.activeProfileId = profileId;
+        saveProfiles();
+        applyActiveProfileToUI();
+        closeProfileModal();
+        buildCategoriesForActiveTab(false);
+    }
+
+    function openProfileModal() {
+        const settingsModal = dom.settingsModal;
+        if (settingsModal && !settingsModal.classList.contains('hidden')) {
+            closeSettingsModal();
+        }
+        state.mode = 'profile_modal';
+        state.profileModalIndex = Math.max(0, state.profiles.findIndex(p => p.id === state.activeProfileId));
+        renderProfileModal();
+        const modal = document.getElementById('profile-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+        updateProfileModalFocus();
+    }
+
+    function closeProfileModal() {
+        const modal = document.getElementById('profile-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+        }
+        state.mode = 'catalog';
+        applyVisualFocus();
+    }
+
+    function updateProfileModalFocus() {
+        const controls = getProfileModalControls();
+        controls.forEach((el, idx) => el.classList.toggle('focused', idx === state.profileModalIndex));
+    }
+
+    function openProfileEditModal(profileIdOrNull) {
+        const existing = profileIdOrNull ? state.profiles.find(p => p.id === profileIdOrNull) : null;
+        state.profileEditTargetId = existing ? existing.id : null;
+
+        if (existing) {
+            state.profileEditDraft = {
+                ...existing,
+                blockedCategories: Array.isArray(existing.blockedCategories) ? [...existing.blockedCategories] : []
+            };
+        } else {
+            const idx = state.profiles.length;
+            state.profileEditDraft = {
+                id: 'p_' + Date.now(),
+                name: `Perfil ${idx + 1}`,
+                avatar: PROFILE_AVATARS[idx % PROFILE_AVATARS.length],
+                color: PROFILE_COLORS[idx % PROFILE_COLORS.length],
+                isAdmin: false,
+                allowLive: true,
+                allowMovies: true,
+                allowSeries: true,
+                allowAdult: false,
+                blockedCategories: []
+            };
+        }
+
+        const pModal = document.getElementById('profile-modal');
+        if (pModal) pModal.classList.add('hidden');
+
+        state.mode = 'profile_edit';
+        state.profileEditFocusIndex = 1; // Focus on first toggle button
+        renderProfileEditModal();
+
+        const editModal = document.getElementById('profile-edit-modal');
+        if (editModal) {
+            editModal.classList.remove('hidden');
+            editModal.setAttribute('aria-hidden', 'false');
+        }
+        updateProfileEditFocus();
+    }
+
+    function closeProfileEditModal(reopenSelector = true) {
+        const inputName = document.getElementById('input-profile-name');
+        if (inputName) inputName.blur();
+        const editModal = document.getElementById('profile-edit-modal');
+        if (editModal) {
+            editModal.classList.add('hidden');
+            editModal.setAttribute('aria-hidden', 'true');
+        }
+        if (reopenSelector) {
+            openProfileModal();
+        } else {
+            state.mode = 'catalog';
+            applyVisualFocus();
+        }
+    }
+
+    function getProfileEditControls() {
+        const list = [
+            document.getElementById('input-profile-name'),
+            document.getElementById('ptog-live'),
+            document.getElementById('ptog-movies'),
+            document.getElementById('ptog-series'),
+            document.getElementById('ptog-adult'),
+            ...Array.from(document.querySelectorAll('#profile-cats-box .profile-cat-item')),
+            document.getElementById('btn-profile-delete'),
+            document.getElementById('btn-profile-cancel'),
+            document.getElementById('btn-profile-save')
+        ].filter(el => el && !el.classList.contains('hidden'));
+        return list;
+    }
+
+    function updateProfileEditFocus() {
+        const controls = getProfileEditControls();
+        controls.forEach((el, idx) => {
+            const focused = idx === state.profileEditFocusIndex;
+            el.classList.toggle('focused', focused);
+            if (focused && el.scrollIntoView) {
+                el.scrollIntoView({ block: 'nearest' });
+            }
+        });
+    }
+
+    function renderProfileEditModal() {
+        const draft = state.profileEditDraft;
+        if (!draft) return;
+
+        const titleEl = document.getElementById('profile-edit-title');
+        if (titleEl) titleEl.textContent = state.profileEditTargetId ? `👤 Editar Perfil: ${draft.name}` : '➕ Criar Novo Perfil';
+
+        const nameInput = document.getElementById('input-profile-name');
+        if (nameInput && nameInput.value !== draft.name) nameInput.value = draft.name;
+
+        const updatePill = (id, allowed, yesLabel, noLabel) => {
+            const pill = document.getElementById(id);
+            if (!pill) return;
+            pill.textContent = allowed ? yesLabel : noLabel;
+            pill.classList.toggle('off', !allowed);
+        };
+        updatePill('ptog-live-pill', draft.allowLive !== false, 'HABILITADO', 'BLOQUEADO');
+        updatePill('ptog-movies-pill', draft.allowMovies !== false, 'HABILITADO', 'BLOQUEADO');
+        updatePill('ptog-series-pill', draft.allowSeries !== false, 'HABILITADO', 'BLOQUEADO');
+        updatePill('ptog-adult-pill', draft.allowAdult !== false, 'PERMITIDO', 'BLOQUEADO');
+
+        const delBtn = document.getElementById('btn-profile-delete');
+        if (delBtn) delBtn.classList.toggle('hidden', !state.profileEditTargetId || state.profiles.length <= 1);
+
+        const catsBox = document.getElementById('profile-cats-box');
+        if (catsBox) {
+            catsBox.innerHTML = '';
+            const allCats = getAllAvailableCategoryNames();
+            if (allCats.length === 0) {
+                catsBox.innerHTML = '<div style="color:#9ca3af;font-size:12px;grid-column:span 3;">Carregue uma lista IPTV para filtrar categorias individuais.</div>';
+            } else {
+                allCats.slice(0, 60).forEach(catName => {
+                    const isBlocked = draft.blockedCategories.includes(catName);
+                    const btn = document.createElement('button');
+                    btn.className = `profile-cat-item ${isBlocked ? 'blocked' : ''}`;
+                    btn.dataset.catName = catName;
+                    btn.innerHTML = `<span>${escapeHtml(catName)}</span><span>${isBlocked ? '✕' : '✓'}</span>`;
+                    btn.addEventListener('click', () => {
+                        toggleDraftCategory(catName);
+                    });
+                    catsBox.appendChild(btn);
+                });
+            }
+        }
+    }
+
+    function toggleDraftCategory(catName) {
+        const draft = state.profileEditDraft;
+        if (!draft) return;
+        const idx = draft.blockedCategories.indexOf(catName);
+        if (idx >= 0) draft.blockedCategories.splice(idx, 1);
+        else draft.blockedCategories.push(catName);
+        renderProfileEditModal();
+        updateProfileEditFocus();
+    }
+
+    function saveProfileEditDraft() {
+        const draft = state.profileEditDraft;
+        if (!draft) return;
+        const nameInput = document.getElementById('input-profile-name');
+        const cleanName = (nameInput ? nameInput.value : draft.name).trim() || 'Usuário';
+        draft.name = cleanName;
+
+        if (state.profileEditTargetId) {
+            const idx = state.profiles.findIndex(p => p.id === state.profileEditTargetId);
+            if (idx >= 0) state.profiles[idx] = draft;
+        } else {
+            state.profiles.push(draft);
+            state.activeProfileId = draft.id;
+        }
+        saveProfiles();
+        applyActiveProfileToUI();
+        buildCategoriesForActiveTab(false);
+        closeProfileEditModal(true);
+    }
+
+    function deleteEditingProfile() {
+        if (!state.profileEditTargetId || state.profiles.length <= 1) return;
+        state.profiles = state.profiles.filter(p => p.id !== state.profileEditTargetId);
+        if (state.activeProfileId === state.profileEditTargetId) {
+            state.activeProfileId = state.profiles[0].id;
+        }
+        saveProfiles();
+        applyActiveProfileToUI();
+        buildCategoriesForActiveTab(false);
+        closeProfileEditModal(true);
+    }
+
+    /**
+     * ========================================================================
      * NAVEGAÇÃO POR CONTROLE REMOTO (D-PAD COMPLETO EM TODAS AS ZONAS)
      * ========================================================================
      */
@@ -2586,6 +2972,61 @@
             const isBack = key === 'Escape' || key === 'XF86Back' || keyCode === KEYS.ESC || keyCode === KEYS.TIZEN_RETURN;
             const isChUp = keyCode === KEYS.CH_UP;
             const isChDown = keyCode === KEYS.CH_DOWN;
+
+            // 0A. MODAL SELETOR DE PERFIS DE USUÁRIO
+            if (state.mode === 'profile_modal') {
+                event.preventDefault();
+                const controls = getProfileModalControls();
+                if (isBack) {
+                    closeProfileModal();
+                    return;
+                }
+                if ((isRight || isDown) && state.profileModalIndex < controls.length - 1) {
+                    state.profileModalIndex++;
+                    updateProfileModalFocus();
+                } else if ((isLeft || isUp) && state.profileModalIndex > 0) {
+                    state.profileModalIndex--;
+                    updateProfileModalFocus();
+                } else if (isEnter && controls[state.profileModalIndex]) {
+                    controls[state.profileModalIndex].click();
+                }
+                return;
+            }
+
+            // 0B. MODAL EDITOR DE PERFIL E PERMISSÕES
+            if (state.mode === 'profile_edit') {
+                const controls = getProfileEditControls();
+                const focusedEl = controls[state.profileEditFocusIndex];
+                const isTextInput = focusedEl && focusedEl.tagName === 'INPUT';
+
+                if (isBack) {
+                    event.preventDefault();
+                    closeProfileEditModal(true);
+                    return;
+                }
+                if (isTextInput && (isLeft || isRight)) {
+                    return; // Allow cursor movement inside name input
+                }
+                event.preventDefault();
+                if (isDown || isRight) {
+                    if (state.profileEditFocusIndex < controls.length - 1) {
+                        state.profileEditFocusIndex++;
+                        updateProfileEditFocus();
+                    }
+                } else if (isUp || isLeft) {
+                    if (state.profileEditFocusIndex > 0) {
+                        state.profileEditFocusIndex--;
+                        updateProfileEditFocus();
+                    }
+                } else if (isEnter && focusedEl) {
+                    if (focusedEl.tagName === 'INPUT') {
+                        focusedEl.focus();
+                    } else {
+                        focusedEl.click();
+                    }
+                }
+                return;
+            }
 
             // 1A. GAVETA LATERAL DE ZAPPING DENTRO DO PLAYER
             if (state.mode === 'player_drawer') {
@@ -3033,6 +3474,7 @@
                 if (isRight) {
                     if (currentCol < currentItems.length - 1) {
                         state.colIndices[currentRow] = currentCol + 1;
+                        ensureRowCardsRendered(currentRow, currentCol + 1);
                         applyVisualFocus();
                     }
                 } else if (isLeft) {
@@ -3129,6 +3571,66 @@
         const playlistInd = document.getElementById('playlist-indicator');
         if (playlistInd) playlistInd.addEventListener('click', openSettingsModal);
         if (dom.parentalBadge) dom.parentalBadge.addEventListener('click', openSettingsModal);
+
+        // Delegação de clique nos cards do catálogo (otimizado para TV)
+        if (dom.rowsWrapper) {
+            dom.rowsWrapper.addEventListener('click', (e) => {
+                const cardEl = e.target.closest('.channel-card');
+                if (!cardEl) return;
+                const rIndex = Number(cardEl.dataset.rowIndex);
+                const cIndex = Number(cardEl.dataset.colIndex);
+                const ch = state.categories[rIndex] && state.categories[rIndex].items[cIndex];
+                if (!ch) return;
+                state.mode = 'catalog';
+                state.rowIndex = rIndex;
+                state.colIndices[rIndex] = cIndex;
+                applyVisualFocus();
+                activateSelectedChannelOrShow(ch);
+            });
+        }
+
+        // Eventos dos Perfis de Usuário
+        const profileInd = document.getElementById('profile-indicator');
+        if (profileInd) profileInd.addEventListener('click', openProfileModal);
+
+        const btnOpenProfiles = document.getElementById('btn-open-profiles-modal');
+        if (btnOpenProfiles) btnOpenProfiles.addEventListener('click', openProfileModal);
+
+        const btnQuickNewProfile = document.getElementById('btn-create-new-profile-quick');
+        if (btnQuickNewProfile) btnQuickNewProfile.addEventListener('click', () => {
+            closeSettingsModal();
+            openProfileEditModal(null);
+        });
+
+        const btnPNew = document.getElementById('btn-profile-new');
+        if (btnPNew) btnPNew.addEventListener('click', () => openProfileEditModal(null));
+
+        const btnPEdit = document.getElementById('btn-profile-edit-active');
+        if (btnPEdit) btnPEdit.addEventListener('click', () => openProfileEditModal(state.activeProfileId));
+
+        const btnPClose = document.getElementById('btn-profile-close');
+        if (btnPClose) btnPClose.addEventListener('click', closeProfileModal);
+
+        ['live', 'movies', 'series', 'adult'].forEach(key => {
+            const btn = document.getElementById(`ptog-${key}`);
+            if (!btn) return;
+            btn.addEventListener('click', () => {
+                if (!state.profileEditDraft) return;
+                const prop = btn.dataset.perm;
+                state.profileEditDraft[prop] = state.profileEditDraft[prop] === false;
+                renderProfileEditModal();
+                updateProfileEditFocus();
+            });
+        });
+
+        const btnPSave = document.getElementById('btn-profile-save');
+        if (btnPSave) btnPSave.addEventListener('click', saveProfileEditDraft);
+
+        const btnPCancel = document.getElementById('btn-profile-cancel');
+        if (btnPCancel) btnPCancel.addEventListener('click', () => closeProfileEditModal(true));
+
+        const btnPDelete = document.getElementById('btn-profile-delete');
+        if (btnPDelete) btnPDelete.addEventListener('click', deleteEditingProfile);
 
         dom.pinKeys.forEach((keyBtn, idx) => {
             keyBtn.addEventListener('click', () => {

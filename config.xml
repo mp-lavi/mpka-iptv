@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<widget xmlns:tizen="http://tizen.org/ns/widgets" xmlns="http://www.w3.org/ns/widgets" id="http://mpka.iptv/MPKAIptv" version="2.5.1" viewmodes="maximized">
+<widget xmlns:tizen="http://tizen.org/ns/widgets" xmlns="http://www.w3.org/ns/widgets" id="http://mpka.iptv/MPKAIptv" version="2.6.0" viewmodes="maximized">
     <tizen:application id="mpkaiptv01.MPKAIptv" package="mpkaiptv01" required_version="3.0"/>
     <content src="index.html"/>
     <feature name="http://tizen.org/feature/screen.size.all"/>
     <feature name="http://tizen.org/feature/network.internet"/>
     <icon src="icon.png"/>
     <name>MPKA Player</name>
-    <description>MPKA Iptv - Smart Player completo (Ao Vivo, Filmes, Séries, EPG XMLTV, Zapping, Multi-Qualidade e Controle Parental) para Samsung Tizen OS.</description>
+    <description>MPKA Player - Lightweight Smart TV streaming media player with Live TV, Movies, Series, XMLTV EPG, User Profiles, and hardware-accelerated playback for Samsung Tizen OS.</description>
     <tizen:privilege name="http://tizen.org/privilege/internet"/>
     <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
     <tizen:privilege name="http://tizen.org/privilege/tv.display"/>
