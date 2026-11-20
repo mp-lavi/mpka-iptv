@@ -2890,7 +2890,8 @@
         if (pModal) pModal.classList.add('hidden');
 
         state.mode = 'profile_edit';
-        state.profileEditFocusIndex = 1; // Focus on first toggle button
+        state.profileEditFocusIndex = 0; // Focus on first keyboard key
+        renderProfileOsk();
         renderProfileEditModal();
 
         const editModal = document.getElementById('profile-edit-modal');
@@ -2917,9 +2918,37 @@
         }
     }
 
+    function renderProfileOsk() {
+        const box = document.getElementById('profile-osk');
+        if (!box || box.children.length > 0) return;
+        OSK_KEYS.forEach(k => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'profile-osk-key' + (k.length > 1 ? ' wide' : '');
+            btn.textContent = k;
+            btn.addEventListener('click', () => {
+                if (!state.profileEditDraft) return;
+                let cur = state.profileEditDraft.name || '';
+                if (k === 'APAGAR') {
+                    cur = cur.slice(0, -1);
+                } else if (k === 'LIMPAR') {
+                    cur = '';
+                } else if (k === 'ESPAÇO') {
+                    if (cur.length < 20) cur += ' ';
+                } else {
+                    if (cur.length < 20) cur += k;
+                }
+                state.profileEditDraft.name = cur;
+                const nameInput = document.getElementById('input-profile-name');
+                if (nameInput) nameInput.value = cur;
+            });
+            box.appendChild(btn);
+        });
+    }
+
     function getProfileEditControls() {
         const list = [
-            document.getElementById('input-profile-name'),
+            ...Array.from(document.querySelectorAll('#profile-osk .profile-osk-key')),
             document.getElementById('ptog-live'),
             document.getElementById('ptog-movies'),
             document.getElementById('ptog-series'),
@@ -3210,33 +3239,43 @@
             if (state.mode === 'profile_edit') {
                 const controls = getProfileEditControls();
                 const focusedEl = controls[state.profileEditFocusIndex];
-                const isTextInput = focusedEl && focusedEl.tagName === 'INPUT';
+                const isOskKey = focusedEl && focusedEl.classList.contains('profile-osk-key');
 
                 if (isBack) {
                     event.preventDefault();
                     closeProfileEditModal(true);
                     return;
                 }
-                if (isTextInput && (isLeft || isRight)) {
-                    return; // Allow cursor movement inside name input
-                }
                 event.preventDefault();
-                if (isDown || isRight) {
+                if (isRight) {
                     if (state.profileEditFocusIndex < controls.length - 1) {
                         state.profileEditFocusIndex++;
                         updateProfileEditFocus();
                     }
-                } else if (isUp || isLeft) {
+                } else if (isLeft) {
                     if (state.profileEditFocusIndex > 0) {
                         state.profileEditFocusIndex--;
                         updateProfileEditFocus();
                     }
-                } else if (isEnter && focusedEl) {
-                    if (focusedEl.tagName === 'INPUT') {
-                        focusedEl.focus();
+                } else if (isDown) {
+                    if (isOskKey) {
+                        const next = state.profileEditFocusIndex + 19;
+                        state.profileEditFocusIndex = next < OSK_KEYS.length ? next : Math.min(controls.length - 1, OSK_KEYS.length);
                     } else {
-                        focusedEl.click();
+                        state.profileEditFocusIndex = Math.min(controls.length - 1, state.profileEditFocusIndex + 2);
                     }
+                    updateProfileEditFocus();
+                } else if (isUp) {
+                    if (isOskKey) {
+                        state.profileEditFocusIndex = Math.max(0, state.profileEditFocusIndex - 19);
+                    } else if (state.profileEditFocusIndex <= OSK_KEYS.length + 1) {
+                        state.profileEditFocusIndex = Math.max(0, OSK_KEYS.length - 1);
+                    } else {
+                        state.profileEditFocusIndex = Math.max(0, state.profileEditFocusIndex - 2);
+                    }
+                    updateProfileEditFocus();
+                } else if (isEnter && focusedEl) {
+                    focusedEl.click();
                 }
                 return;
             }

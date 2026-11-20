@@ -2368,3 +2368,44 @@ html, body {
     color: #ffffff;
     font-size: 34px;
 }
+
+/* Fundo opaco estilo Netflix para a tela de Perfis (cobre 100% o catálogo atrás) */
+#profile-modal,
+#profile-edit-modal {
+    background: radial-gradient(circle at 80% 15%, #2d0b12 0%, #0b0d11 55%, #06070a 100%);
+}
+
+.profile-osk {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: -8px 0 16px;
+    padding: 10px;
+    background: #0b0e14;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+}
+
+.profile-osk-key {
+    min-width: 34px;
+    height: 32px;
+    padding: 0 8px;
+    border-radius: 6px;
+    background: #1b2130;
+    border: 2px solid transparent;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.profile-osk-key.focused {
+    border-color: var(--accent-red);
+    background: #2b3347;
+    transform: scale(1.08);
+}
+
+.profile-osk-key.wide {
+    min-width: 72px;
+    background: #252c3d;
+}
