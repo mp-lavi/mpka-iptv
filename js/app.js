@@ -53,8 +53,10 @@
         { id: 'aspect-cinema', label: 'Cinema 21:9' }
     ];
 
-    const MAX_CARDS_PER_ROW = 40;
-    const INITIAL_CARDS_PER_ROW = 16;
+    const MAX_CARDS_PER_ROW = 10;
+    const ROW_PREVIEW_LIMIT = 10;
+    const INITIAL_CARDS_PER_ROW = 11;
+    const CATGRID_PAGE_SIZE = 18; // 6 colunas x 3 linhas
     const OSK_KEYS = [
         'A','B','C','D','E','F','G','H','I','J','K','L','M',
         'N','O','P','Q','R','S','T','U','V','W','X','Y','Z',
@@ -134,7 +136,14 @@
         // Pareamento por Código Temporário (SS-IPTV style)
         pairModalIndex: 1,
         pairEventSource: null,
-        pairTimerInterval: null
+        pairTimerInterval: null,
+
+        // Tela de Grade Completa da Categoria (Ver Mais)
+        catGridCategory: null,
+        catGridPage: 0,
+        catGridZone: 'grid', // 'back' | 'grid' | 'footer'
+        catGridIndex: 0,
+        catGridFooterIndex: 1 // 0 = prev, 1 = next
     };
 
     // Referências DOM
@@ -433,7 +442,7 @@
         }
 
         dom.categoryJumpBar.classList.remove('hidden');
-        state.categories.slice(0, 14).forEach((cat, idx) => {
+        state.categories.forEach((cat, idx) => {
             const pill = document.createElement('button');
             pill.className = `cat-pill ${idx === state.rowIndex ? 'active' : ''}`;
             const shortTitle = cat.title.replace(/^(Canais|Filmes|Series|Séries)\s*\|\s*/i, '');
@@ -444,9 +453,8 @@
             pill.addEventListener('click', () => {
                 state.rowIndex = idx;
                 state.catJumpIndex = idx;
-                state.mode = 'catalog';
                 renderCategoryJumpBar();
-                applyVisualFocus();
+                openCategoryGridModal(cat);
             });
 
             dom.categoryJumpBar.appendChild(pill);
@@ -1081,9 +1089,10 @@
             }
 
             if (p.allowMovies !== false && state.sectionCache.movies.length > 0) {
-                groupItemsByCategory(state.sectionCache.movies, 3).forEach(g => categories.push({
+                groupItemsByCategory(state.sectionCache.movies, 4).forEach(g => categories.push({
                     kicker: 'CINEMA EM CASA',
                     title: g.title,
+                    allItems: g.allItems,
                     items: g.items
                 }));
             }
@@ -1092,33 +1101,38 @@
                 groupItemsByCategory(state.sectionCache.live, 4).forEach(g => categories.push({
                     kicker: 'TV AO VIVO',
                     title: g.title,
+                    allItems: g.allItems,
                     items: g.items
                 }));
             }
 
             if (p.allowSeries !== false && state.sectionCache.series.length > 0) {
-                groupItemsByCategory(state.sectionCache.series, 3).forEach(g => categories.push({
+                groupItemsByCategory(state.sectionCache.series, 4).forEach(g => categories.push({
                     kicker: 'MARATONAR',
                     title: g.title,
+                    allItems: g.allItems,
                     items: g.items
                 }));
             }
         } else if (tab === 'live' && p.allowLive !== false) {
-            groupItemsByCategory(state.sectionCache.live, 65).forEach(g => categories.push({
+            groupItemsByCategory(state.sectionCache.live, 999).forEach(g => categories.push({
                 kicker: 'TRANSMISSÃO AO VIVO',
                 title: g.title,
+                allItems: g.allItems,
                 items: g.items
             }));
         } else if (tab === 'movies' && p.allowMovies !== false) {
-            groupItemsByCategory(state.sectionCache.movies, 65).forEach(g => categories.push({
+            groupItemsByCategory(state.sectionCache.movies, 999).forEach(g => categories.push({
                 kicker: 'CATÁLOGO DE FILMES',
                 title: g.title,
+                allItems: g.allItems,
                 items: g.items
             }));
         } else if (tab === 'series' && p.allowSeries !== false) {
-            groupItemsByCategory(state.sectionCache.series, 65).forEach(g => categories.push({
+            groupItemsByCategory(state.sectionCache.series, 999).forEach(g => categories.push({
                 kicker: 'SÉRIES & NOVELAS',
                 title: g.title,
+                allItems: g.allItems,
                 items: g.items
             }));
         } else if (tab === 'search') {
@@ -1136,13 +1150,13 @@
 
             dom.searchCountBadge.textContent = `${filtered.length} resultados`;
 
-            const searchMovies = filtered.filter(i => i.section === 'movies').slice(0, MAX_CARDS_PER_ROW);
-            const searchSeries = filtered.filter(i => i.section === 'series').slice(0, MAX_CARDS_PER_ROW);
-            const searchLive = filtered.filter(i => i.section === 'live').slice(0, MAX_CARDS_PER_ROW);
+            const searchMovies = filtered.filter(i => i.section === 'movies');
+            const searchSeries = filtered.filter(i => i.section === 'series');
+            const searchLive = filtered.filter(i => i.section === 'live');
 
-            if (searchMovies.length > 0) categories.push({ kicker: 'RESULTADOS', title: 'Filmes Encontrados', items: searchMovies });
-            if (searchSeries.length > 0) categories.push({ kicker: 'RESULTADOS', title: 'Séries Encontradas', items: searchSeries });
-            if (searchLive.length > 0) categories.push({ kicker: 'RESULTADOS', title: 'Canais Ao Vivo Encontrados', items: searchLive });
+            if (searchMovies.length > 0) categories.push({ kicker: 'RESULTADOS', title: 'Filmes Encontrados', allItems: searchMovies, items: searchMovies.slice(0, ROW_PREVIEW_LIMIT) });
+            if (searchSeries.length > 0) categories.push({ kicker: 'RESULTADOS', title: 'Séries Encontradas', allItems: searchSeries, items: searchSeries.slice(0, ROW_PREVIEW_LIMIT) });
+            if (searchLive.length > 0) categories.push({ kicker: 'RESULTADOS', title: 'Canais Ao Vivo Encontrados', allItems: searchLive, items: searchLive.slice(0, ROW_PREVIEW_LIMIT) });
         }
 
         state.categories = categories;
@@ -1159,21 +1173,24 @@
         applyVisualFocus();
     }
 
-    function groupItemsByCategory(items, maxCategories = 50) {
+    function groupItemsByCategory(items, maxCategories = 999) {
         const map = new Map();
         for (let i = 0; i < items.length; i++) {
             const ch = items[i];
             if (!isItemAllowedByProfile(ch)) continue;
             const gName = ch.group || 'Geral';
             if (!map.has(gName)) map.set(gName, []);
-            const arr = map.get(gName);
-            if (arr.length < MAX_CARDS_PER_ROW) arr.push(ch);
+            map.get(gName).push(ch);
         }
 
         const result = [];
         map.forEach((groupItems, title) => {
             if (groupItems.length > 0 && result.length < maxCategories) {
-                result.push({ title, items: groupItems });
+                result.push({
+                    title,
+                    allItems: groupItems,
+                    items: groupItems.slice(0, ROW_PREVIEW_LIMIT)
+                });
             }
         });
         return result;
@@ -1299,6 +1316,7 @@
             rowEl.className = 'category-row';
             rowEl.dataset.rowIndex = rIndex;
 
+            const totalCount = (cat.allItems && cat.allItems.length) ? cat.allItems.length : cat.items.length;
             const isRowAdult = M3UParser.isAdultContent('', cat.title);
             const rowLockBadgeHtml = (isRowAdult && !state.parentalUnlocked)
                 ? '<span class="row-lock-pill">🔒 PIN PARENTAL +18</span>'
@@ -1308,12 +1326,19 @@
             headerEl.className = 'row-header';
             headerEl.innerHTML = `
                 <div class="row-kicker">${escapeHtml(cat.kicker || 'CATÁLOGO')}</div>
-                <div class="row-title-wrap">
+                <div class="row-title-wrap" title="Clique para abrir todos os itens">
                     <h2 class="row-title">${escapeHtml(cat.title)}</h2>
-                    <span class="row-count">${cat.items.length}</span>
+                    <span class="row-count">${totalCount}</span>
                     ${rowLockBadgeHtml}
                 </div>
             `;
+            const titleWrap = headerEl.querySelector('.row-title-wrap');
+            if (titleWrap) {
+                titleWrap.addEventListener('click', () => {
+                    state.rowIndex = rIndex;
+                    openCategoryGridModal(cat);
+                });
+            }
 
             const viewportEl = document.createElement('div');
             viewportEl.className = 'row-viewport';
@@ -1325,6 +1350,22 @@
             const initialCount = Math.min(cat.items.length, INITIAL_CARDS_PER_ROW);
             for (let cIndex = 0; cIndex < initialCount; cIndex++) {
                 trackEl.appendChild(createCardElement(cat.items[cIndex], rIndex, cIndex));
+            }
+
+            if (totalCount > cat.items.length) {
+                const isLiveRow = cat.items[0] && cat.items[0].section === 'live';
+                const seeMoreEl = document.createElement('article');
+                seeMoreEl.className = `channel-card card-see-more ${isLiveRow ? 'card-live' : 'card-poster'}`;
+                seeMoreEl.id = `card-${rIndex}-${cat.items.length}`;
+                seeMoreEl.dataset.rowIndex = rIndex;
+                seeMoreEl.dataset.colIndex = cat.items.length;
+                seeMoreEl.dataset.seeMore = 'true';
+                seeMoreEl.innerHTML = `
+                    <div class="see-more-plus">+</div>
+                    <div class="see-more-title">Ver Mais</div>
+                    <div class="see-more-count">Ver todos os ${totalCount} itens</div>
+                `;
+                trackEl.appendChild(seeMoreEl);
             }
 
             viewportEl.appendChild(trackEl);
@@ -1396,7 +1437,12 @@
         if (state.mode === 'catjump') {
             const pills = Array.from(dom.categoryJumpBar.querySelectorAll('.cat-pill'));
             const activePill = pills[state.catJumpIndex] || pills[0];
-            if (activePill) activePill.classList.add('focused');
+            if (activePill) {
+                activePill.classList.add('focused');
+                if (activePill.scrollIntoView) {
+                    activePill.scrollIntoView({ inline: 'center', block: 'nearest' });
+                }
+            }
             return;
         }
 
@@ -3178,6 +3224,111 @@
 
     /**
      * ========================================================================
+     * GRADE PAGINADA DE CATEGORIA COMPLETA (VER MAIS / TODOS OS ITENS)
+     * ========================================================================
+     */
+    function openCategoryGridModal(cat) {
+        if (!cat) return;
+        state.catGridCategory = cat;
+        state.catGridPage = 0;
+        state.catGridZone = 'grid';
+        state.catGridIndex = 0;
+        state.mode = 'catgrid';
+
+        const modal = document.getElementById('category-grid-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+        renderCategoryGridPage();
+    }
+
+    function closeCategoryGridModal() {
+        const modal = document.getElementById('category-grid-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+        }
+        state.mode = 'catalog';
+        applyVisualFocus();
+    }
+
+    function getCatGridPageItems() {
+        const cat = state.catGridCategory;
+        if (!cat) return [];
+        const all = (cat.allItems && cat.allItems.length) ? cat.allItems : cat.items;
+        const start = state.catGridPage * CATGRID_PAGE_SIZE;
+        return all.slice(start, start + CATGRID_PAGE_SIZE);
+    }
+
+    function renderCategoryGridPage() {
+        const cat = state.catGridCategory;
+        if (!cat) return;
+        const all = (cat.allItems && cat.allItems.length) ? cat.allItems : cat.items;
+        const totalPages = Math.max(1, Math.ceil(all.length / CATGRID_PAGE_SIZE));
+        state.catGridPage = clamp(state.catGridPage, 0, totalPages - 1);
+
+        const titleEl = document.getElementById('catgrid-title');
+        const countEl = document.getElementById('catgrid-count-badge');
+        const pageEl = document.getElementById('catgrid-page-badge');
+        const gridEl = document.getElementById('catgrid-items');
+        const prevBtn = document.getElementById('btn-catgrid-prev');
+        const nextBtn = document.getElementById('btn-catgrid-next');
+
+        if (titleEl) titleEl.textContent = cat.title;
+        if (countEl) countEl.textContent = `${all.length} itens`;
+        if (pageEl) pageEl.textContent = `Página ${state.catGridPage + 1} de ${totalPages}`;
+        if (prevBtn) prevBtn.disabled = state.catGridPage === 0;
+        if (nextBtn) nextBtn.disabled = state.catGridPage >= totalPages - 1;
+
+        if (!gridEl) return;
+        gridEl.innerHTML = '';
+
+        const pageItems = getCatGridPageItems();
+        const frag = document.createDocumentFragment();
+        pageItems.forEach((ch, idx) => {
+            const locked = isChannelLockedByParental(ch);
+            const card = document.createElement('div');
+            card.className = 'catgrid-card';
+            card.dataset.gridIdx = idx;
+
+            const initials = getInitials(ch.name);
+            const displayTitle = locked ? 'Conteúdo Protegido (+18)' : ch.name;
+            const mediaHtml = (ch.logo && !locked)
+                ? `<img loading="lazy" src="${escapeHtml(ch.logo)}" alt="${escapeHtml(ch.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div class="card-Avatar" style="display:none;">${initials}</div>`
+                : `<div class="card-Avatar">${locked ? '🔒' : initials}</div>`;
+
+            card.innerHTML = `
+                <div class="catgrid-card-media">${mediaHtml}</div>
+                <div class="catgrid-card-title">${escapeHtml(displayTitle)}</div>
+            `;
+            card.addEventListener('click', () => {
+                state.catGridZone = 'grid';
+                state.catGridIndex = idx;
+                updateCatGridFocus();
+                activateSelectedChannelOrShow(ch);
+            });
+            frag.appendChild(card);
+        });
+        gridEl.appendChild(frag);
+        state.catGridIndex = clamp(state.catGridIndex, 0, Math.max(0, pageItems.length - 1));
+        updateCatGridFocus();
+    }
+
+    function updateCatGridFocus() {
+        const backBtn = document.getElementById('btn-catgrid-back');
+        const prevBtn = document.getElementById('btn-catgrid-prev');
+        const nextBtn = document.getElementById('btn-catgrid-next');
+        const cards = Array.from(document.querySelectorAll('#catgrid-items .catgrid-card'));
+
+        if (backBtn) backBtn.classList.toggle('focused', state.catGridZone === 'back');
+        if (prevBtn) prevBtn.classList.toggle('focused', state.catGridZone === 'footer' && state.catGridFooterIndex === 0);
+        if (nextBtn) nextBtn.classList.toggle('focused', state.catGridZone === 'footer' && state.catGridFooterIndex === 1);
+        cards.forEach((c, idx) => c.classList.toggle('focused', state.catGridZone === 'grid' && idx === state.catGridIndex));
+    }
+
+    /**
+     * ========================================================================
      * NAVEGAÇÃO POR CONTROLE REMOTO (D-PAD COMPLETO EM TODAS AS ZONAS)
      * ========================================================================
      */
@@ -3194,6 +3345,96 @@
             const isBack = key === 'Escape' || key === 'XF86Back' || keyCode === KEYS.ESC || keyCode === KEYS.TIZEN_RETURN;
             const isChUp = keyCode === KEYS.CH_UP;
             const isChDown = keyCode === KEYS.CH_DOWN;
+
+            // 0D. TELA DE GRADE PAGINADA DA CATEGORIA (VER MAIS)
+            if (state.mode === 'catgrid') {
+                event.preventDefault();
+                if (isBack) {
+                    closeCategoryGridModal();
+                    return;
+                }
+                const pageItems = getCatGridPageItems();
+                const all = (state.catGridCategory && state.catGridCategory.allItems) ? state.catGridCategory.allItems : [];
+                const totalPages = Math.max(1, Math.ceil(all.length / CATGRID_PAGE_SIZE));
+
+                if (state.catGridZone === 'back') {
+                    if (isDown && pageItems.length > 0) {
+                        state.catGridZone = 'grid';
+                        state.catGridIndex = 0;
+                        updateCatGridFocus();
+                    } else if (isEnter) {
+                        closeCategoryGridModal();
+                    }
+                    return;
+                }
+
+                if (state.catGridZone === 'footer') {
+                    if (isUp && pageItems.length > 0) {
+                        state.catGridZone = 'grid';
+                        state.catGridIndex = Math.max(0, pageItems.length - 1);
+                        updateCatGridFocus();
+                    } else if (isLeft) {
+                        state.catGridFooterIndex = 0;
+                        updateCatGridFocus();
+                    } else if (isRight) {
+                        state.catGridFooterIndex = 1;
+                        updateCatGridFocus();
+                    } else if (isEnter) {
+                        if (state.catGridFooterIndex === 0 && state.catGridPage > 0) {
+                            state.catGridPage--;
+                            state.catGridIndex = 0;
+                            renderCategoryGridPage();
+                        } else if (state.catGridFooterIndex === 1 && state.catGridPage < totalPages - 1) {
+                            state.catGridPage++;
+                            state.catGridIndex = 0;
+                            renderCategoryGridPage();
+                        }
+                    }
+                    return;
+                }
+
+                // state.catGridZone === 'grid' (6 colunas)
+                if (isRight) {
+                    if (state.catGridIndex < pageItems.length - 1) {
+                        state.catGridIndex++;
+                        updateCatGridFocus();
+                    } else if (state.catGridPage < totalPages - 1) {
+                        state.catGridPage++;
+                        state.catGridIndex = 0;
+                        renderCategoryGridPage();
+                    }
+                } else if (isLeft) {
+                    if (state.catGridIndex > 0) {
+                        state.catGridIndex--;
+                        updateCatGridFocus();
+                    } else if (state.catGridPage > 0) {
+                        state.catGridPage--;
+                        state.catGridIndex = CATGRID_PAGE_SIZE - 1;
+                        renderCategoryGridPage();
+                    }
+                } else if (isDown) {
+                    if (state.catGridIndex + 6 < pageItems.length) {
+                        state.catGridIndex += 6;
+                        updateCatGridFocus();
+                    } else {
+                        state.catGridZone = 'footer';
+                        state.catGridFooterIndex = state.catGridPage < totalPages - 1 ? 1 : 0;
+                        updateCatGridFocus();
+                    }
+                } else if (isUp) {
+                    if (state.catGridIndex - 6 >= 0) {
+                        state.catGridIndex -= 6;
+                        updateCatGridFocus();
+                    } else {
+                        state.catGridZone = 'back';
+                        updateCatGridFocus();
+                    }
+                } else if (isEnter) {
+                    const ch = pageItems[state.catGridIndex];
+                    if (ch) activateSelectedChannelOrShow(ch);
+                }
+                return;
+            }
 
             // 0C. MODAL DE PAREAMENTO POR CÓDIGO TEMPORÁRIO
             if (state.mode === 'pair_modal') {
@@ -3661,10 +3902,10 @@
                 return;
             }
 
-            // 8. BARRA DE PULO RÁPIDO DE CATEGORIAS (JUMP PILLS)
+            // 8. BARRA DE PULO RÁPIDO DE CATEGORIAS (JUMP PILLS - TODAS AS CATEGORIAS)
             if (state.mode === 'catjump') {
                 event.preventDefault();
-                const maxPills = Math.min(14, state.categories.length);
+                const maxPills = state.categories.length;
                 if (isLeft && state.catJumpIndex > 0) {
                     state.catJumpIndex--;
                     applyVisualFocus();
@@ -3680,8 +3921,8 @@
                     applyVisualFocus();
                 } else if (isEnter) {
                     state.rowIndex = state.catJumpIndex;
-                    state.mode = 'catalog';
-                    applyVisualFocus();
+                    const chosenCat = state.categories[state.catJumpIndex];
+                    if (chosenCat) openCategoryGridModal(chosenCat);
                 }
                 return;
             }
@@ -3730,11 +3971,15 @@
                 }
 
                 const currentRow = state.rowIndex;
-                const currentItems = state.categories[currentRow].items;
+                const currentCat = state.categories[currentRow];
+                const currentItems = currentCat.items;
                 const currentCol = state.colIndices[currentRow] || 0;
+                const totalRowCount = (currentCat.allItems && currentCat.allItems.length) ? currentCat.allItems.length : currentItems.length;
+                const hasSeeMore = totalRowCount > currentItems.length;
+                const maxColIdx = currentItems.length - 1 + (hasSeeMore ? 1 : 0);
 
                 if (isRight) {
-                    if (currentCol < currentItems.length - 1) {
+                    if (currentCol < maxColIdx) {
                         state.colIndices[currentRow] = currentCol + 1;
                         ensureRowCardsRendered(currentRow, currentCol + 1);
                         applyVisualFocus();
@@ -3759,9 +4004,13 @@
                         applyVisualFocus();
                     }
                 } else if (isEnter) {
-                    const selectedChannel = currentItems[currentCol];
-                    if (selectedChannel) {
-                        activateSelectedChannelOrShow(selectedChannel);
+                    if (hasSeeMore && currentCol === currentItems.length) {
+                        openCategoryGridModal(currentCat);
+                    } else {
+                        const selectedChannel = currentItems[currentCol];
+                        if (selectedChannel) {
+                            activateSelectedChannelOrShow(selectedChannel);
+                        }
                     }
                 } else if (isBack) {
                     state.mode = 'topbar';
@@ -3841,7 +4090,14 @@
                 if (!cardEl) return;
                 const rIndex = Number(cardEl.dataset.rowIndex);
                 const cIndex = Number(cardEl.dataset.colIndex);
-                const ch = state.categories[rIndex] && state.categories[rIndex].items[cIndex];
+                const cat = state.categories[rIndex];
+                if (!cat) return;
+                if (cardEl.dataset.seeMore === 'true') {
+                    state.rowIndex = rIndex;
+                    openCategoryGridModal(cat);
+                    return;
+                }
+                const ch = cat.items[cIndex];
                 if (!ch) return;
                 state.mode = 'catalog';
                 state.rowIndex = rIndex;
@@ -3850,6 +4106,30 @@
                 activateSelectedChannelOrShow(ch);
             });
         }
+
+        // Eventos da Grade Paginada da Categoria
+        const btnCatBack = document.getElementById('btn-catgrid-back');
+        if (btnCatBack) btnCatBack.addEventListener('click', closeCategoryGridModal);
+
+        const btnCatPrev = document.getElementById('btn-catgrid-prev');
+        if (btnCatPrev) btnCatPrev.addEventListener('click', () => {
+            if (state.catGridPage > 0) {
+                state.catGridPage--;
+                state.catGridIndex = 0;
+                renderCategoryGridPage();
+            }
+        });
+
+        const btnCatNext = document.getElementById('btn-catgrid-next');
+        if (btnCatNext) btnCatNext.addEventListener('click', () => {
+            const all = (state.catGridCategory && state.catGridCategory.allItems) ? state.catGridCategory.allItems : [];
+            const totalPages = Math.max(1, Math.ceil(all.length / CATGRID_PAGE_SIZE));
+            if (state.catGridPage < totalPages - 1) {
+                state.catGridPage++;
+                state.catGridIndex = 0;
+                renderCategoryGridPage();
+            }
+        });
 
         // Eventos dos Perfis de Usuário
         const profileInd = document.getElementById('profile-indicator');

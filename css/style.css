@@ -2409,3 +2409,195 @@ html, body {
     min-width: 72px;
     background: #252c3d;
 }
+
+/* ==========================================================================
+   CARD "VER MAIS" + GRADE PAGINADA DE CATEGORIA (ESTILO IPTV GRID)
+   ========================================================================== */
+.channel-card.card-see-more {
+    background: linear-gradient(145deg, #1b2232 0%, #10141e 100%);
+    border: 2px dashed rgba(229, 9, 20, 0.55);
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 18px;
+    gap: 10px;
+}
+
+.channel-card.card-see-more.focused {
+    border-style: solid;
+    border-color: var(--accent-red);
+    background: linear-gradient(145deg, #2a151b 0%, #161a24 100%);
+}
+
+.see-more-plus {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--accent-red);
+    color: #ffffff;
+    font-size: 32px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.see-more-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.see-more-count {
+    font-size: 13px;
+    color: #9ca3af;
+    font-weight: 600;
+}
+
+.row-title-wrap {
+    cursor: pointer;
+}
+
+#category-grid-modal {
+    background: #0b0d11;
+    padding: 0;
+}
+
+.catgrid-dialog {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 26px 48px;
+    background: #0b0d11;
+}
+
+.catgrid-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.catgrid-back-btn {
+    padding: 10px 20px;
+    border-radius: 10px;
+    background: #1b2130;
+    border: 2.5px solid rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.catgrid-back-btn.focused {
+    border-color: var(--accent-red);
+    background: var(--accent-red);
+}
+
+.catgrid-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+}
+
+.catgrid-title {
+    font-size: 26px;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.catgrid-items {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 16px;
+    padding: 22px 0;
+    min-height: 0;
+}
+
+.catgrid-card {
+    background: #141923;
+    border: 2.5px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    cursor: pointer;
+    contain: layout style;
+    transition: transform 0.12s ease-out, border-color 0.12s ease-out;
+}
+
+.catgrid-card.focused {
+    transform: scale(1.04);
+    border-color: var(--accent-red);
+    background: #1e2534;
+    z-index: 5;
+}
+
+.catgrid-card-media {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0f131b;
+    padding: 10px;
+}
+
+.catgrid-card-media img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.catgrid-card-title {
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #f3f4f6;
+    background: #161b26;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+}
+
+.catgrid-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.catgrid-page-btn {
+    padding: 12px 24px;
+    border-radius: 10px;
+    background: #1b2130;
+    border: 2.5px solid rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.catgrid-page-btn.focused {
+    border-color: var(--accent-red);
+    background: var(--accent-red);
+}
+
+.catgrid-page-btn:disabled {
+    opacity: 0.35;
+}
+
+.catgrid-footer-info {
+    font-size: 13px;
+    color: #9ca3af;
+}

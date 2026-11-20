@@ -203,6 +203,30 @@
         </footer>
     </div>
 
+    <!-- MODAL DE GRADE DA CATEGORIA (VER TODOS OS ITENS COM PAGINAÇÃO) -->
+    <div id="category-grid-modal" class="modal-backdrop hidden" aria-hidden="true">
+        <div class="catgrid-dialog">
+            <header class="catgrid-header">
+                <button id="btn-catgrid-back" class="catgrid-back-btn">← Voltar</button>
+                <div class="catgrid-title-wrap">
+                    <h2 id="catgrid-title" class="catgrid-title">Categoria</h2>
+                    <span id="catgrid-count-badge" class="modal-badge">0 itens</span>
+                </div>
+                <div id="catgrid-page-badge" class="modal-badge">Página 1 de 1</div>
+            </header>
+
+            <div id="catgrid-items" class="catgrid-items">
+                <!-- Preenchido dinamicamente por js/app.js -->
+            </div>
+
+            <footer class="catgrid-footer">
+                <button id="btn-catgrid-prev" class="catgrid-page-btn">⬅ Página Anterior</button>
+                <span id="catgrid-footer-info" class="catgrid-footer-info">Use as setas para navegar • OK para assistir • Voltar para sair</span>
+                <button id="btn-catgrid-next" class="catgrid-page-btn">Próxima Página ➡</button>
+            </footer>
+        </div>
+    </div>
+
     <!-- MODAL DE TEMPORADAS E EPISÓDIOS (AGRUPAMENTO DE SÉRIES) -->
     <div id="series-modal" class="modal-backdrop hidden" aria-hidden="true">
         <div class="series-dialog">
